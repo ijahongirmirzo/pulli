@@ -1,6 +1,6 @@
 # A Mac App Store edition of Pulli
 
-Status: plan, not started. Written 2026-10-14 for the owner's decision.
+Status: spike 1 done (2026-10-17, see results below); the owner decided to publish on the App Store.
 
 ## The short answer
 
@@ -62,6 +62,26 @@ licence (MIT or Apache 2.0) avoids the question. The App Store edition ships no 
 2. **The sandboxed build.** The app, helper and widget with the entitlements above, the journal in
    the app group container, copying into Downloads and into a bookmarked folder.
 3. **File Provider extension.** A read-only phone location in Finder backed by the same session.
+
+## Spike 1 results (2026-10-17, Samsung Galaxy Z Fold7, USB 2, macOS 27)
+
+Run with `pulli-cli icc` while Pulli was quit, through macOS's camera service (nothing stopped).
+
+| Phone USB mode | What ImageCaptureCore sees |
+|---|---|
+| File transfer (MTP) | The phone, but **no files** (an empty, complete catalogue) |
+| Transferring images (PTP) | **772 items, 6.01 GB**: 749 images, 21 videos, 2 other — camera photos and videos, screenshots, images saved by messaging apps — as one flat list; each file knows its folder (`DCIM/Camera/…`) |
+
+- **Ranged reads work:** 4 MB from the middle of a 385 MB video in 137 ms.
+- **Speed:** 36.6 MB/s with 4–16 MiB reads (1 MiB: 30.7 MB/s) — faster than libmtp on the same cable (about 29 MB/s).
+- **Resume works:** a copy killed at 147 MB continued from there; the result matched the
+  chained SHA-256 recorded for the same file by an earlier libmtp copy.
+- Not visible: documents, Downloads, other folders; copying to the phone and deleting need
+  testing (`ICCameraDeviceCanDeleteOneFile` is reported).
+
+**Conclusion:** the App Store edition is viable as **"photos and videos"**: it asks the user to
+choose "Transferring images" on the phone, and gets resumable, checked copies at full speed. The
+direct-download edition stays the full-phone tool.
 
 ## Suggested order
 
