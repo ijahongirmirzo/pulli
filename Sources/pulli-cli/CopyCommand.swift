@@ -18,11 +18,13 @@ struct Copy: AsyncParsableCommand {
             Examples:
               pulli-cli copy /DCIM/Camera ~/Pictures/Phone
               pulli-cli copy /DCIM /Pictures/Screenshots /Download/report.pdf ~/Desktop/Backup
+              pulli-cli copy --backend icc /DCIM/Camera ~/Pictures/Phone   (photos and videos, through ImageCaptureCore)
             """
     )
 
     @OptionGroup var phone: PhoneOptions
     @OptionGroup var storageOption: StorageOption
+    @OptionGroup var backendOption: BackendOption
 
     @Argument(help: "Files or folders on the phone, then the destination folder on the Mac.")
     var paths: [String]
@@ -52,6 +54,9 @@ struct Copy: AsyncParsableCommand {
         guard DuplicatePolicy(rawValue: duplicates.replacingOccurrences(of: "-", with: "_")) != nil else {
             throw ValidationError("--duplicates must be auto, skip, overwrite or keep-both")
         }
+        if backendOption.backend == .icc, viaWorker || phone.reportOnly {
+            throw ValidationError("--via-worker and --report-only are for the libmtp backend")
+        }
     }
 
     func run() async throws {
@@ -71,7 +76,13 @@ struct Copy: AsyncParsableCommand {
         let workerConnector = viaWorker ? WorkerConnector(executable: URL(fileURLWithPath: CommandLine.arguments[0]).resolvingSymlinksInPath()
             .deletingLastPathComponent().appendingPathComponent("pulli-mtp-worker"),
             extraArguments: phone.reportOnly ? ["--report-only"] : []) : nil
-        let session = try await Phones.open(options: phone, workerConnector: workerConnector)
+        // ImageCaptureCore: the same journal, engine and resume, through macOS's camera service.
+        let iccConnector = backendOption.backend == .icc ? ICCPhones.connector() : nil
+        let session = if let iccConnector {
+            try await ICCPhones.open(iccConnector, serial: phone.serial)
+        } else {
+            try await Phones.open(options: phone, workerConnector: workerConnector)
+        }
         if viaWorker {
             Log.note("Using a pulli-mtp-worker process for the phone.")
         }
@@ -110,8 +121,9 @@ struct Copy: AsyncParsableCommand {
             }
             if let recovered = attempt.recovered { Log.note("Recovered the phone after an interrupted transfer: \(recovered).") }
         }
-        let supervisor = TransferSupervisor(connector: viaWorker ? workerConnector! : connector, journal: journal, sink: POSIXFileSink(),
-                                            configuration: configuration)
+        let chosen: any DeviceConnector = if let iccConnector { iccConnector } else if viaWorker { workerConnector! } else { connector }
+        let supervisor = TransferSupervisor(connector: chosen, journal: journal,
+                                            sink: POSIXFileSink(), configuration: configuration)
         let display = BatchDisplay()
         let totals = try await supervisor.run(batchID: batch.id!, session: session) { display.handle($0) }
         display.summarize(totals, batchID: batch.id!, journal: journal)

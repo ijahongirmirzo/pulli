@@ -1,6 +1,7 @@
 # A Mac App Store edition of Pulli
 
 Status: spike 1 done (2026-10-17, see results below); the owner decided to publish on the App Store.
+Stage 1, the ImageCaptureCore phone backend, is built and waits for a test on a phone (see below).
 
 ## The short answer
 
@@ -82,6 +83,46 @@ Run with `pulli-cli icc` while Pulli was quit, through macOS's camera service (n
 **Conclusion:** the App Store edition is viable as **"photos and videos"**: it asks the user to
 choose "Transferring images" on the phone, and gets resumable, checked copies at full speed. The
 direct-download edition stays the full-phone tool.
+
+## Stage 1: the ImageCaptureCore phone backend (2026-10-17)
+
+The phone layer only; no UI, sandbox or packaging changes yet.
+
+- **`ICCKit`** (depends on DeviceAPI only): `ICCDeviceWatcher` (cameras from one shared
+  `ICDeviceBrowser`, USB only, iPhones left out), `ICCDeviceConnector` and `ICCSession`, a
+  `DeviceSession` with one storage, "Photos and videos", whose folders (`DCIM/Camera`,
+  `Pictures/Screenshots`, …) are synthesised from Image Capture's flat catalogue
+  (`ICCFolderIndex`, pure and tested). Reads are ranged (at most 16 MiB, short reads allowed), so
+  copies resume from the last commit like libmtp's. Writing, deleting and renaming throw
+  `.unsupported`.
+- **Identity:** the USB serial when Image Capture reports one (the same `DeviceKey` as libmtp
+  gives), otherwise Image Capture's persistent ID (`DeviceKey.Kind.imageCapture`, `icc:…`). The
+  storage ID (`0x1CC00001`) differs from MTP's, so a batch started over one backend is never
+  resumed over the other.
+- **Errors:** phone removed or session closed suddenly → `.deviceGone`; empty catalogue (the
+  phone is in "File transfer" mode) → `.noStorage`, with `ICCGuidance.chooseTransferringImages`
+  for the user; timeouts and busy phones → `.transient`; a read that gets no answer in 30 s counts
+  as a stall (`.transient`).
+- `DeviceWatcher` and `DeviceCandidate` moved from HelperCore to DeviceAPI, so backends do not
+  depend on the helper.
+- **Choosing it:** `PULLI_PHONE_BACKEND=icc` for the helper and the in-app engine (libmtp stays
+  the default); `--backend icc` for `pulli-cli ls` and `pulli-cli copy`.
+
+To try it (quit Pulli first; on the phone choose "Transferring images"):
+
+```sh
+swift build --product pulli-cli
+R=$(swift build --show-bin-path)/pulli-cli
+$R ls --backend icc /                        # the synthesised folders
+$R ls --backend icc /DCIM/Camera
+$R copy --backend icc /DCIM/Camera ~/Desktop/ICC-test   # pull the cable mid-copy, plug back in
+$R copy --backend icc /DCIM/Camera ~/Desktop/ICC-test   # or Ctrl-C and run again: it resumes
+$R batches                                   # the journal's view
+```
+
+Still to check on a phone: whether Image Capture reports the USB serial, whether paths carry a
+storage-root folder, files over 4 GiB (offsets above 32 bits), and how the dates compare with
+libmtp's for the same files.
 
 ## Suggested order
 

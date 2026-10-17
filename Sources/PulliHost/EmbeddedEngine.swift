@@ -48,8 +48,9 @@ public final class EmbeddedEngine: Sendable {
             engine = HelperEngine(journal: journal, sink: POSIXFileSink(), connector: MockConnector(devices: phones.devices),
                                   watcher: phones, version: version, pollInterval: .milliseconds(250))
         } else {
-            engine = HelperEngine(journal: journal, sink: POSIXFileSink(), connector: WorkerConnector(executable: workerURL),
-                                  watcher: USBPhoneWatcher(), version: version)
+            let phones = PhoneBackend.fromEnvironment().devices(workerURL: workerURL)
+            engine = HelperEngine(journal: journal, sink: POSIXFileSink(), connector: phones.connector,
+                                  watcher: phones.watcher, version: version)
         }
         do {
             try await engine.start()

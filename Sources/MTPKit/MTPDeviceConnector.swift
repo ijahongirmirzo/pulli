@@ -27,6 +27,9 @@ public struct MTPDeviceConnector: DeviceConnector {
                 await session.close()
             }
             throw .deviceGone
+        case .imageCapture:
+            // An identity only ImageCaptureCore knows: libmtp cannot find that phone by it.
+            throw .deviceGone
         }
     }
 }

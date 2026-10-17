@@ -7,6 +7,9 @@ public struct DeviceKey: Sendable, Hashable, Codable, CustomStringConvertible {
         case usb
         /// MTP DeviceInfo serial, for devices whose USB serial is missing or junk.
         case mtp
+        /// ImageCaptureCore's persistent device ID, for a phone whose USB serial Image Capture
+        /// does not report.
+        case imageCapture = "icc"
     }
 
     public var kind: Kind

@@ -27,6 +27,8 @@ let journalURL = arguments.firstIndex(of: "--journal").flatMap { index in
 } ?? Journal.defaultURL(fileName: mock ? "journal-mock.sqlite" : "journal.sqlite")
 
 let version = PulliProtocolVersion.build
+// PULLI_PHONE_BACKEND=icc: phones through ImageCaptureCore instead of libmtp workers.
+let backend = PhoneBackend.fromEnvironment()
 
 func log(_ message: String) {
     FileHandle.standardError.write(Data("pulli-helper: \(message)\n".utf8))
@@ -50,11 +52,12 @@ if mock {
     engine = HelperEngine(journal: journal, sink: POSIXFileSink(), connector: MockConnector(devices: phones.devices),
                           watcher: phones, version: version)
 } else {
-    engine = HelperEngine(journal: journal, sink: POSIXFileSink(), connector: WorkerConnector(executable: workerURL),
-                          watcher: USBPhoneWatcher(), version: version)
+    let phones = backend.devices(workerURL: workerURL)
+    engine = HelperEngine(journal: journal, sink: POSIXFileSink(), connector: phones.connector,
+                          watcher: phones.watcher, version: version)
 }
 
-if !mock && !FileManager.default.isExecutableFile(atPath: workerURL.path) {
+if !mock && backend == .libmtp && !FileManager.default.isExecutableFile(atPath: workerURL.path) {
     log("the phone worker is missing at \(workerURL.path)")
 }
 
@@ -67,7 +70,7 @@ let server = XPCServer(engine: engine)
 do {
     try await engine.start()
     try server.listen()
-    log("listening on \(PulliXPC.machServiceName)\(mock ? " (simulated phone)" : ""), journal \(journalURL.path)")
+    log("listening on \(PulliXPC.machServiceName)\(mock ? " (simulated phone)" : backend == .icc ? " (phones through ImageCaptureCore)" : ""), journal \(journalURL.path)")
 } catch {
     log("failed to start: \(error)")
     exit(1)

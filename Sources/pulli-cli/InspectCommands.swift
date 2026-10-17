@@ -252,8 +252,14 @@ struct List: AsyncParsableCommand {
     @Flag(help: "Only print the count and timing (for folders with tens of thousands of files).")
     var summary = false
 
+    @OptionGroup var backendOption: BackendOption
+
     func run() async throws {
-        let session = try await Phones.open(options: phone)
+        let session: any DeviceSession = if backendOption.backend == .icc {
+            try await ICCPhones.open(ICCPhones.connector(), serial: phone.serial)
+        } else {
+            try await Phones.open(options: phone)
+        }
         let storage = try await Phones.storage(of: session, matching: storageOption.storage)
 
         let start = ContinuousClock.now

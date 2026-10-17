@@ -49,6 +49,10 @@ let package = Package(
 
         .target(name: "MockDevice", dependencies: ["DeviceAPI"], swiftSettings: strictSwift),
 
+        // Phones through Apple's ImageCaptureCore (macOS's camera service): the App Store
+        // edition's backend, which needs neither libmtp nor stopping ptpcamerad (docs/APP_STORE.md).
+        .target(name: "ICCKit", dependencies: ["DeviceAPI"], swiftSettings: strictSwift),
+
         .target(
             name: "TransferCore",
             dependencies: ["DeviceAPI", .product(name: "GRDB", package: "GRDB.swift")],
@@ -71,7 +75,7 @@ let package = Package(
         .executableTarget(
             name: "pulli-cli",
             dependencies: [
-                "MTPKit", "USBKit", "TransferCore", "DeviceAPI", "PulliClient", "PulliProtocol", "WorkerIPC", "pulli-mtp-worker",
+                "MTPKit", "USBKit", "TransferCore", "DeviceAPI", "PulliClient", "PulliProtocol", "WorkerIPC", "pulli-mtp-worker", "ICCKit",
                 .product(name: "ArgumentParser", package: "swift-argument-parser"),
             ],
             swiftSettings: strictSwift
@@ -79,6 +83,7 @@ let package = Package(
 
         .testTarget(name: "DeviceAPITests", dependencies: ["DeviceAPI"], swiftSettings: strictSwift),
         .testTarget(name: "MTPKitTests", dependencies: ["MTPKit"], swiftSettings: strictSwift),
+        .testTarget(name: "ICCKitTests", dependencies: ["ICCKit", "DeviceAPI", "TransferCore"], swiftSettings: strictSwift),
         // Helper-to-worker frames and the worker-process DeviceConnector (with the stall watchdog).
         .target(name: "WorkerIPC", dependencies: ["DeviceAPI"], swiftSettings: strictSwift),
 
@@ -93,7 +98,7 @@ let package = Package(
         // installed. Also the simulated phone used without USB.
         .target(
             name: "PulliHost",
-            dependencies: ["HelperCore", "WorkerIPC", "USBKit", "PulliProtocol", "PulliClient", "TransferCore", "DeviceAPI", "MockDevice"],
+            dependencies: ["HelperCore", "WorkerIPC", "USBKit", "PulliProtocol", "PulliClient", "TransferCore", "DeviceAPI", "MockDevice", "ICCKit"],
             swiftSettings: strictSwift
         ),
 

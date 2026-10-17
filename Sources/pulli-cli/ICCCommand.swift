@@ -1,5 +1,6 @@
 import ArgumentParser
 import Foundation
+import ICCKit
 import ImageCaptureCore
 import UniformTypeIdentifiers
 
@@ -40,16 +41,16 @@ struct ICCList: AsyncParsableCommand {
     var timeout: Double = 10
 
     func run() async throws {
-        let browser = ICCBrowser()
+        let browser = ICCDeviceBrowser.shared
         defer { browser.stop() }
 
         // Authorisation enquiry
         print("Authorisation:")
-        print(browser.authorisationReport())
+        print(authorisationReport())
         print("")
 
         print("Searching for local cameras (timeout \(Int(timeout)) s)...")
-        let cameras = try await browser.discover(timeout: timeout)
+        let cameras = try await discoverCameras(timeout: timeout)
 
         for (index, camera) in cameras.enumerated() {
             if index > 0 { print("\n" + String(repeating: "-", count: 60) + "\n") }
@@ -457,10 +458,19 @@ struct ICCPull: AsyncParsableCommand {
 
 // MARK: - Supporting Helpers
 
+/// Waits for cameras like the spike did: until the first sweep found one, or `timeout`.
+private func discoverCameras(timeout: Double) async throws -> [ICCameraDevice] {
+    let cameras = await ICCDeviceBrowser.shared.waitForCameras(timeout: .milliseconds(Int(timeout * 1000))).map(\.device)
+    guard !cameras.isEmpty else {
+        throw CLIError("No camera device found within \(Int(timeout)) s. Unlock the phone, plug it in with a data cable, and choose \"File transfer\" or \"Transferring images\".")
+    }
+    return cameras
+}
+
 /// Selects a single camera device using the browser.
-private func selectCamera(deviceName: String?, timeout: Double) async throws -> (ICCBrowser, ICCameraDevice) {
-    let browser = ICCBrowser()
-    let cameras = try await browser.discover(timeout: timeout)
+private func selectCamera(deviceName: String?, timeout: Double) async throws -> (ICCDeviceBrowser, ICCameraDevice) {
+    let browser = ICCDeviceBrowser.shared
+    let cameras = try await discoverCameras(timeout: timeout)
 
     if let deviceName {
         guard let match = cameras.first(where: {
@@ -482,344 +492,30 @@ private func selectCamera(deviceName: String?, timeout: Double) async throws -> 
     return (browser, cameras[0])
 }
 
-extension ICDevice: @unchecked @retroactive Sendable {}
-extension ICCameraItem: @unchecked @retroactive Sendable {}
-
-/// Protects an async continuation so it is resumed exactly once.
-final class OnceContinuation<T: Sendable>: @unchecked Sendable {
-    private let lock = NSLock()
-    private var continuation: CheckedContinuation<T, any Error>?
-
-    init(_ continuation: CheckedContinuation<T, any Error>) {
-        self.continuation = continuation
+/// Whether ImageCaptureCore's authorisation API exists on this Mac (it is iOS-only so far).
+private func authorisationReport() -> String {
+    let browser = ICDeviceBrowser()
+    var lines: [String] = []
+    for (label, selector) in [("requestContentsAuthorization", "requestContentsAuthorizationWithCompletion:"),
+                              ("requestControlAuthorization: ", "requestControlAuthorizationWithCompletion:")] {
+        lines.append("  \(label): " + (browser.responds(to: NSSelectorFromString(selector)) ? "supported" : "unavailable on macOS (iOS-only API)"))
     }
-
-    func resume(returning value: sending T) {
-        lock.lock()
-        defer { lock.unlock() }
-        continuation?.resume(returning: value)
-        continuation = nil
+    for key in ["contentsAuthorizationStatus", "controlAuthorizationStatus"] {
+        let value = browser.responds(to: NSSelectorFromString(key)) ? browser.value(forKey: key) : nil
+        lines.append("  \(key):".padding(toLength: 32, withPad: " ", startingAt: 0) + (value.map { "\($0)" } ?? "none"))
     }
-
-    func resume(throwing error: any Error) {
-        lock.lock()
-        defer { lock.unlock() }
-        continuation?.resume(throwing: error)
-        continuation = nil
-    }
+    return lines.joined(separator: "\n")
 }
 
-/// Browser wrapper for discovering local camera devices on the main run loop.
-final class ICCBrowser: NSObject, ICDeviceBrowserDelegate, @unchecked Sendable {
-    private let browser = ICDeviceBrowser()
-    private let lock = NSLock()
-    private var cameras: [ICCameraDevice] = []
-    private var once: OnceContinuation<[ICCameraDevice]>?
-    private var timer: (any DispatchSourceTimer)?
-    private var enumerationCompleted = false
+private typealias ICCameraSession = ICCCameraSession
 
-    func authorisationReport() -> String {
-        var lines: [String] = []
-        let contentsSel = NSSelectorFromString("requestContentsAuthorizationWithCompletion:")
-        let controlSel = NSSelectorFromString("requestControlAuthorizationWithCompletion:")
-        if browser.responds(to: contentsSel) {
-            lines.append("  requestContentsAuthorization: supported")
-        } else {
-            lines.append("  requestContentsAuthorization: unavailable on macOS (iOS-only API)")
-        }
-        if browser.responds(to: controlSel) {
-            lines.append("  requestControlAuthorization:  supported")
-        } else {
-            lines.append("  requestControlAuthorization:  unavailable on macOS (iOS-only API)")
-        }
-        if let val = browser.value(forKey: "contentsAuthorizationStatus") {
-            lines.append("  contentsAuthorizationStatus:  \(val)")
-        } else {
-            lines.append("  contentsAuthorizationStatus:  none")
-        }
-        if let val = browser.value(forKey: "controlAuthorizationStatus") {
-            lines.append("  controlAuthorizationStatus:   \(val)")
-        } else {
-            lines.append("  controlAuthorizationStatus:   none")
-        }
-        return lines.joined(separator: "\n")
-    }
-
-    func discover(timeout: TimeInterval) async throws -> [ICCameraDevice] {
-        try await withCheckedThrowingContinuation { cont in
-            let onceGate = OnceContinuation(cont)
-            lock.lock()
-            self.cameras.removeAll()
-            self.enumerationCompleted = false
-            self.once = onceGate
-            lock.unlock()
-
-            let timer = DispatchSource.makeTimerSource(queue: DispatchQueue.global())
-            timer.schedule(deadline: .now() + timeout)
-            timer.setEventHandler { [weak self] in
-                guard let self else { return }
-                self.lock.lock()
-                let found = self.cameras
-                self.lock.unlock()
-                if found.isEmpty {
-                    onceGate.resume(throwing: CLIError(
-                        "No camera device found within \(Int(timeout)) s. Unlock the phone, plug it in with a data cable, and choose \"File transfer\" or \"Transferring images\"."
-                    ))
-                } else {
-                    onceGate.resume(returning: found)
-                }
-            }
-            self.timer = timer
-            timer.resume()
-
-            DispatchQueue.main.async {
-                self.browser.delegate = self
-                let mask = ICDeviceTypeMask(rawValue: ICDeviceTypeMask.camera.rawValue | ICDeviceLocationTypeMask.local.rawValue)!
-                self.browser.browsedDeviceTypeMask = mask
-                self.browser.start()
-            }
-        }
-    }
-
-    func stop() {
-        timer?.cancel()
-        timer = nil
-        DispatchQueue.main.async {
-            self.browser.stop()
-            self.browser.delegate = nil
-        }
-    }
-
-    // MARK: - ICDeviceBrowserDelegate
-
-    func deviceBrowser(_ browser: ICDeviceBrowser, didAdd device: ICDevice, moreComing: Bool) {
-        lock.lock()
-        if let camera = device as? ICCameraDevice {
-            if !cameras.contains(where: { $0 === camera }) {
-                cameras.append(camera)
-            }
-        }
-        let shouldFinish = (!moreComing && enumerationCompleted && !cameras.isEmpty)
-        let found = cameras
-        lock.unlock()
-
-        if shouldFinish {
-            timer?.cancel()
-            timer = nil
-            once?.resume(returning: found)
-        }
-    }
-
-    func deviceBrowser(_ browser: ICDeviceBrowser, didRemove device: ICDevice, moreGoing: Bool) {
-        lock.lock()
-        if let camera = device as? ICCameraDevice {
-            cameras.removeAll(where: { $0 === camera })
-        }
-        lock.unlock()
-    }
-
-    func deviceBrowserDidEnumerateLocalDevices(_ browser: ICDeviceBrowser) {
-        lock.lock()
-        enumerationCompleted = true
-        let hasCameras = !cameras.isEmpty
-        let found = cameras
-        lock.unlock()
-
-        if hasCameras {
-            timer?.cancel()
-            timer = nil
-            once?.resume(returning: found)
-        }
-    }
-}
-
-/// Manages an ICCameraDevice session and awaits complete content catalogue enumeration.
-final class ICCameraSession: NSObject, ICCameraDeviceDelegate, @unchecked Sendable {
-    let device: ICCameraDevice
-    private let lock = NSLock()
-    private var openContinuation: OnceContinuation<Duration>?
-    private var sessionOpenStart: ContinuousClock.Instant?
-
-    init(device: ICCameraDevice) {
-        self.device = device
-        super.init()
-    }
-
-    func open(catalogTimeout: TimeInterval = 60) async throws -> Duration {
-        try await withCheckedThrowingContinuation { cont in
-            let once = OnceContinuation(cont)
-            lock.lock()
-            self.openContinuation = once
-            self.sessionOpenStart = ContinuousClock.now
-            lock.unlock()
-
-            DispatchQueue.main.async {
-                self.device.delegate = self
-                self.device.requestOpenSession()
-            }
-
-            DispatchQueue.global().asyncAfter(deadline: .now() + catalogTimeout) { [weak self] in
-                guard let self else { return }
-                self.lock.lock()
-                let waiting = (self.openContinuation != nil)
-                self.lock.unlock()
-                if waiting {
-                    once.resume(throwing: CLIError("Timed out waiting for content catalogue after \(Int(catalogTimeout)) s."))
-                }
-            }
-        }
-    }
-
-    func close() async {
-        await withCheckedContinuation { (cont: CheckedContinuation<Void, Never>) in
-            lock.lock()
-            guard device.hasOpenSession else {
-                lock.unlock()
-                cont.resume()
-                return
-            }
-            lock.unlock()
-
-            device.requestCloseSession(options: nil) { [weak self] _ in
-                guard let self else {
-                    cont.resume()
-                    return
-                }
-                DispatchQueue.main.async {
-                    self.device.delegate = nil
-                }
-                cont.resume()
-            }
-        }
-    }
-
-    // MARK: - ICCameraDeviceDelegate & ICDeviceDelegate
-
-    func device(_ device: ICDevice, didOpenSessionWithError error: (any Error)?) {
-        if let error {
-            lock.lock()
-            let once = openContinuation
-            openContinuation = nil
-            lock.unlock()
-            once?.resume(throwing: error)
-        }
-    }
-
-    func deviceDidBecomeReady(withCompleteContentCatalog device: ICCameraDevice) {
-        lock.lock()
-        let start = sessionOpenStart ?? ContinuousClock.now
-        let duration = ContinuousClock.now - start
-        let once = openContinuation
-        openContinuation = nil
-        lock.unlock()
-        once?.resume(returning: duration)
-    }
-
-    func device(_ device: ICDevice, didCloseSessionWithError error: (any Error)?) {
-        lock.lock()
-        let once = openContinuation
-        openContinuation = nil
-        lock.unlock()
-        if let once {
-            let err = error ?? CLIError("Camera session closed before catalogue enumeration completed.")
-            once.resume(throwing: err)
-        }
-    }
-
-    func didRemove(_ device: ICDevice) {
-        lock.lock()
-        let once = openContinuation
-        openContinuation = nil
-        lock.unlock()
-        once?.resume(throwing: CLIError("Camera device was disconnected."))
-    }
-
-    func device(_ device: ICDevice, didEncounterError error: (any Error)?) {
-        if let error {
-            lock.lock()
-            let once = openContinuation
-            openContinuation = nil
-            lock.unlock()
-            once?.resume(throwing: error)
-        }
-    }
-
-    func cameraDevice(_ camera: ICCameraDevice, didAdd items: [ICCameraItem]) {}
-    func cameraDevice(_ camera: ICCameraDevice, didRemove items: [ICCameraItem]) {}
-    func cameraDevice(_ camera: ICCameraDevice, didReceiveThumbnail thumbnail: CGImage?, for item: ICCameraItem, error: (any Error)?) {}
-    func cameraDevice(_ camera: ICCameraDevice, didReceiveMetadata metadata: [AnyHashable : Any]?, for item: ICCameraItem, error: (any Error)?) {}
-    func cameraDevice(_ camera: ICCameraDevice, didRenameItems items: [ICCameraItem]) {}
-    func cameraDeviceDidChangeCapability(_ camera: ICCameraDevice) {}
-    func cameraDevice(_ camera: ICCameraDevice, didReceivePTPEvent eventData: Data) {}
-    func cameraDeviceDidRemoveAccessRestriction(_ device: ICDevice) {}
-    func cameraDeviceDidEnableAccessRestriction(_ device: ICDevice) {}
-}
-
-/// Reads a byte range from a camera file with single-resumption guarantee.
 private func readData(from file: ICCameraFile, offset: off_t, length: off_t) async throws -> Data {
-    try await withCheckedThrowingContinuation { cont in
-        let once = OnceContinuation(cont)
-        file.requestReadData(atOffset: offset, length: length) { data, error in
-            if let error {
-                once.resume(throwing: error)
-            } else if let data {
-                once.resume(returning: data)
-            } else {
-                once.resume(throwing: CLIError("Read returned neither data nor error at offset \(offset)."))
-            }
-        }
-    }
+    try await iccReadData(from: file, offset: offset, length: length)
 }
 
-/// Returns the canonical path of an item built by walking up its parent folders.
-private func canonicalPath(of item: ICCameraItem) -> String {
-    var parts: [String] = []
-    if let name = item.name, !name.isEmpty {
-        parts.append(name)
-    }
-    var parent = item.parentFolder
-    while let p = parent {
-        if let pName = p.name, !pName.isEmpty {
-            parts.append(pName)
-        }
-        parent = p.parentFolder
-    }
-    return parts.reversed().joined(separator: "/")
-}
+private func canonicalPath(of item: ICCameraItem) -> String { item.cataloguePath }
 
-/// Recursively collects all unique files present in the camera device.
-private func allFiles(in device: ICCameraDevice) -> [ICCameraFile] {
-    var result: [ICCameraFile] = []
-    var seen = Set<ObjectIdentifier>()
-
-    func collect(from items: [ICCameraItem]) {
-        for item in items {
-            if let file = item as? ICCameraFile {
-                if seen.insert(ObjectIdentifier(file)).inserted {
-                    result.append(file)
-                }
-            } else if let folder = item as? ICCameraFolder {
-                if let contents = folder.contents {
-                    collect(from: contents)
-                }
-            }
-        }
-    }
-
-    if let contents = device.contents {
-        collect(from: contents)
-    }
-    if let mediaFiles = device.mediaFiles {
-        for item in mediaFiles {
-            if let file = item as? ICCameraFile {
-                if seen.insert(ObjectIdentifier(file)).inserted {
-                    result.append(file)
-                }
-            }
-        }
-    }
-    return result
-}
+private func allFiles(in device: ICCameraDevice) -> [ICCameraFile] { device.allCameraFiles }
 
 /// Searches for a file in the camera catalogue matching a user-provided path.
 private func findFile(in device: ICCameraDevice, path: String) -> ICCameraFile? {

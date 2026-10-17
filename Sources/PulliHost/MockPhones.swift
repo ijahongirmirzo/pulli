@@ -1,4 +1,4 @@
-import DeviceAPI
+public import DeviceAPI
 import Foundation
 public import HelperCore
 public import MockDevice
