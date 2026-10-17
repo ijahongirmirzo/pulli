@@ -162,6 +162,8 @@ images are attached to this repository's GitHub Releases.
 2. **Support email:** Set `PULLI_FEEDBACK_EMAIL="support@yourdomain.com"` in `Config/release.env` (or via environment variable). If left empty, the "Send Feedback…" menu item remains hidden.
 3. **Feed:** nothing to set up: `scripts/release.sh` updates `appcast.xml` here, and `--publish`
    creates the GitHub release, then commits and pushes the feed.
+4. **Homebrew:** clone `ijahongirmirzo/homebrew-tap` next to this repository (or set
+   `PULLI_TAP_DIR`); `--publish` then updates the cask's version and checksum and pushes it.
 
 ### 2. Creating a release
 

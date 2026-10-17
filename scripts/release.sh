@@ -155,6 +155,19 @@ if $publish; then
     eval "$gh_cmd"
     echo "› committing and pushing appcast"
     eval "$git_cmd"
+    # The Homebrew cask (ijahongirmirzo/homebrew-tap): new version and checksum.
+    tap_dir="${PULLI_TAP_DIR:-../homebrew-tap}"
+    cask="$tap_dir/Casks/pulli.rb"
+    if [[ -f "$cask" ]]; then
+        echo "› updating the Homebrew cask"
+        sha=$(shasum -a 256 "$dmg" | cut -d' ' -f1)
+        sed -i '' -E "s/^  version \".*\"/  version \"${short_version},${build}\"/; s/^  sha256 \".*\"/  sha256 \"${sha}\"/" "$cask"
+        git -C "$tap_dir" add Casks/pulli.rb
+        git -C "$tap_dir" commit -m "Pulli ${short_version} (${build})"
+        git -C "$tap_dir" push origin main
+    else
+        echo "› no Homebrew tap at $tap_dir (set PULLI_TAP_DIR); skipped the cask"
+    fi
     echo "✓ Published $tag"
 else
     echo ""

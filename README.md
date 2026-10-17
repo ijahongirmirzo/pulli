@@ -11,6 +11,8 @@
   <br><sub>Free and open source · notarised by Apple · updates itself</sub>
 </p>
 
+<p align="center">or with <a href="https://brew.sh">Homebrew</a>:&nbsp; <code>brew install --cask ijahongirmirzo/tap/pulli</code></p>
+
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/images/hero-dark.jpg">
   <img alt="Pulli showing a connected Galaxy phone: new photos, camera, screenshots and downloads, with a tip that a USB 3 cable would be three times faster" src="docs/images/hero-light.jpg">
@@ -93,12 +95,16 @@ all — copies, the activity log and saved previews — whenever you like.
 ## Get started
 
 1. [Download Pulli](https://github.com/ijahongirmirzo/pulli/releases/latest), open the
-   disk image and drag Pulli to Applications.
+   disk image and drag Pulli to Applications. Or install it with [Homebrew](https://brew.sh):
+
+   ```bash
+   brew install --cask ijahongirmirzo/tap/pulli
+   ```
 2. Plug your phone into the Mac with a USB cable that carries data, and unlock the phone.
 3. On the phone, tap the USB notification and choose **File transfer**. Tap **Allow** if it asks.
 
-Pulli finds the phone within a few seconds and shows what is on it. Pulli updates itself; you
-can turn automatic checks off in Settings.
+Pulli finds the phone within a few seconds and shows what is on it. Pulli updates itself (you
+can turn automatic checks off in Settings); with Homebrew, `brew upgrade` works too.
 
 **Requirements:** a Mac with Apple silicon and macOS 26 or later, and an Android phone with a USB
 cable. Tested with Samsung Galaxy and Lenovo phones; other Android phones that offer "File
