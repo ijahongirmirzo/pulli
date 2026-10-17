@@ -175,18 +175,25 @@ otool -L build/AppStore/Pulli.app/Contents/MacOS/Pulli
    - Create an **Apple Distribution** certificate on developer.apple.com and install it in Keychain.
    - Create a **Mac Installer Distribution** (or 3rd Party Mac Developer Installer) certificate and install it in Keychain.
 2. **Identifiers on developer.apple.com:**
-   - Create App Group: `8Q2D6948R4.app.pulli.store`.
-   - Create App ID: `app.pulli.store` (enable App Groups).
-   - Create App ID: `app.pulli.store.widget` (enable App Groups).
-   - Create App ID: `app.pulli.store.fileprovider` (enable App Groups).
-   - Assign `8Q2D6948R4.app.pulli.store` to all three App IDs.
+   - Create App ID `app.pulli.store`, App ID `app.pulli.store.widget` and App ID
+     `app.pulli.store.fileprovider` (Certificates, Identifiers & Profiles › Identifiers › +).
+   - The App Group `8Q2D6948R4.app.pulli.store` starts with the team ID, which macOS accepts
+     without registering it (the portal only registers `group.` names), so there is nothing to
+     create for it. If a profile is refused over the group, register `group.app.pulli.store`
+     and tell the assistant to switch the build to it.
 3. **Provisioning Profiles:**
    - Generate three Mac App Store provisioning profiles and place them in `Config/AppStore/profiles/`:
      - `Config/AppStore/profiles/app.pulli.store.provisionprofile`
      - `Config/AppStore/profiles/app.pulli.store.widget.provisionprofile`
      - `Config/AppStore/profiles/app.pulli.store.fileprovider.provisionprofile`
-4. **App Store Connect App Record:**
-   - Create an app record in App Store Connect with bundle identifier `app.pulli.store`.
+4. **App Store Connect App Record** (only possible on the website):
+   - App Store Connect › Apps › + › New App: platform macOS, name "Pulli — Phone Photos to
+     Mac", bundle ID `app.pulli.store`, SKU `pulli-store`. The listing text, privacy answers and
+     screenshots are ready in docs/APP_STORE_LISTING.md (on main) and
+     docs/appstore-screenshots/.
+   - Optional but fastest: App Store Connect › Users and Access › Integrations › create an API
+     key (role App Manager) and put the .p8 file in ~/.appstoreconnect/private_keys/, so the
+     assistant can upload builds and fill in the listing for you.
 5. **Package and Upload:**
    - Run:
      ```sh
