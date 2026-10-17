@@ -339,9 +339,13 @@ private struct TreemapTiles: View {
         if small.count == 1 {
             kept += small
         } else if !small.isEmpty {
-            let sum = { (key: KeyPath<StorageNode, UInt64>) in small.reduce(UInt64(0)) { $0 + $1[keyPath: key] } }
-            kept.append(StorageNode(name: "\(small.count) smaller items", path: node.path + "/·more", bytes: sum(\.bytes),
-                                    files: small.reduce(0) { $0 + $1.files }, images: sum(\.images), videos: sum(\.videos), audio: sum(\.audio),
+            // Plain sums (a key-path helper here trips Xcode 26's data-race check on CI).
+            var bytes: UInt64 = 0, images: UInt64 = 0, videos: UInt64 = 0, audio: UInt64 = 0, files = 0
+            for item in small {
+                bytes += item.bytes; images += item.images; videos += item.videos; audio += item.audio; files += item.files
+            }
+            kept.append(StorageNode(name: "\(small.count) smaller items", path: node.path + "/·more", bytes: bytes,
+                                    files: files, images: images, videos: videos, audio: audio,
                                     children: small.filter { !isLooseFiles($0) }))
         }
         return kept
