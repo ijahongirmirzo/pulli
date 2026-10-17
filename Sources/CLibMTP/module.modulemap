@@ -1,0 +1,6 @@
+module CLibMTP [system] {
+    header "shim.h"
+    link "mtp"
+    link "usb-1.0"
+    export *
+}

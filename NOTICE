@@ -1,0 +1,21 @@
+Pulli
+Copyright (C) 2026 Jakhongirmirzo Ibrokhimov
+
+Pulli is free software: you can redistribute it and/or modify it under the terms of the GNU
+General Public License as published by the Free Software Foundation, either version 3 of the
+License, or (at your option) any later version. It is distributed in the hope that it will be
+useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+FOR A PARTICULAR PURPOSE. See the GNU General Public License in LICENSE for more details.
+
+Additional terms under section 7(b) of the GNU General Public License version 3:
+  Anyone who conveys this program or a work based on it must preserve the author attribution
+  "Pulli, created by Jakhongirmirzo Ibrokhimov" in the Appropriate Legal Notices the work
+  displays (for example its About window), and in the NOTICE file of its source.
+
+Parts with their own licence:
+  - Packages/FinderLocations is licensed under the Apache License 2.0 (see its LICENSE and
+    NOTICE files), so it can be reused in other apps.
+  - Third-party libraries and assets keep their own licences: see THIRD_PARTY_NOTICES.md.
+
+The name "Pulli" and its logo are not licensed under the GPL; a modified version must use a
+different name and logo.

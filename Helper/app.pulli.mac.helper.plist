@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Pulli's background helper, registered by the app with SMAppService.agent(plistName:).
+  Lives in Pulli.app/Contents/Library/LaunchAgents/. Label, file name and Mach service name must
+  all match PulliXPC.machServiceName (docs/DECISIONS.md, D-010).
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>app.pulli.mac.helper</string>
+    <key>BundleProgram</key>
+    <string>Contents/MacOS/pulli-helper</string>
+    <key>MachServices</key>
+    <dict>
+        <key>app.pulli.mac.helper</key>
+        <true/>
+    </dict>
+    <!-- Start at login so copies interrupted by a restart resume on their own. -->
+    <key>RunAtLoad</key>
+    <true/>
+    <!-- Restart after a crash; stay down after a clean exit. -->
+    <key>KeepAlive</key>
+    <dict>
+        <key>SuccessfulExit</key>
+        <false/>
+    </dict>
+    <!-- Without this launchd throttles CPU and I/O for background agents. -->
+    <key>ProcessType</key>
+    <string>Interactive</string>
+    <key>LimitLoadToSessionType</key>
+    <string>Aqua</string>
+</dict>
+</plist>

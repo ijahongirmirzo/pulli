@@ -1,0 +1,5 @@
+# Pinned third-party sources. build-deps.sh refuses to build if a download does not match.
+# Checksums verified 2026-09-27 against the upstream release assets and Homebrew's formulas.
+# name     version  url                                                                                 sha256
+libusb     1.0.30   https://github.com/libusb/libusb/releases/download/v1.0.30/libusb-1.0.30.tar.bz2  fea36f34f9156400209595e300840767ab1a385ede1dc7ee893015aea9c6dbaf
+libmtp     1.1.23   https://github.com/libmtp/libmtp/releases/download/v1.1.23/libmtp-1.1.23.tar.gz    74a2b6e8cb4a0304e95b995496ea3ac644c29371649b892b856e22f12a0bdeed
