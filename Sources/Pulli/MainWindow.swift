@@ -97,6 +97,28 @@ struct MainWindow: View {
     /// Below this width the sidebar folds to icons by itself, so the content keeps its room.
     static let foldWidth: CGFloat = 1100
 
+    @ViewBuilder
+    private var notices: some View {
+        if let banner = model.banner {
+            BannerView(text: banner) { model.banner = nil }
+                .padding(.horizontal, 32).padding(.top, 10).padding(.bottom, 2)
+                .transition(.move(edge: .top).combined(with: .opacity))
+        } else if let troubleID = model.finderTrouble {
+            let name = model.state.devices[troubleID]?.name ?? model.device?.name ?? "the phone"
+            FinderTroubleNote(name: name) {
+                model.finderTrouble = nil
+            } onBrowse: {
+                model.finderTrouble = nil
+                if model.section != .phone {
+                    model.show(.phone)
+                }
+                model.openBrowser(at: "/")
+            }
+            .padding(.horizontal, 32).padding(.top, 10).padding(.bottom, 2)
+            .transition(.move(edge: .top).combined(with: .opacity))
+        }
+    }
+
     var body: some View {
         let route = model.route
         let fullSidebar = !sidebarCollapsed && windowWidth >= Self.foldWidth
@@ -108,44 +130,29 @@ struct MainWindow: View {
                 }
                 .padding(.top, 52)
                 .overlay(alignment: .trailing) { Rectangle().fill(.separator.opacity(0.5)).frame(width: 1).padding(.top, 52) }
-                // The content area clips the sliding screens, so they scroll in and out of it.
-                ZStack {
-                    screen(route)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .id(routeIdentity(route))
-                        .transition(model.navTransition.transition)
+                VStack(spacing: 0) {
+                    // Lasting notices sit above the page and push it down: they never cover it.
+                    notices
+                    // The content area clips the sliding screens, so they scroll in and out of it.
+                    ZStack {
+                        screen(route)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                            .id(routeIdentity(route))
+                            .transition(model.navTransition.transition)
+                    }
+                    // A page's own art (the welcome phone, the Done disc…) follows the pointer
+                    // anywhere on the page; cards set their own, so their art follows the card.
+                    .parallaxSource()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .clipped()
                 }
-                // A page's own art (the welcome phone, the Done disc…) follows the pointer
-                // anywhere on the page; cards set their own, so their art follows the card.
-                .parallaxSource()
                 .padding(.top, 52)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .clipped()
+                .animation(.pulliNavigation, value: model.banner)
+                .animation(.pulliNavigation, value: model.finderTrouble)
             }
             .animation(model.navTransition == .fade ? .easeInOut(duration: 0.3) : .pulliNavigation, value: routeIdentity(route))
             TitleBar(route: route, sidebarWidth: fullSidebar ? FullSidebar.width : Rail.width, search: $search)
-            if let banner = model.banner {
-                BannerView(text: banner) { model.banner = nil }
-                    .padding(.top, 58)
-                    .transition(.move(edge: .top).combined(with: .opacity))
-            } else if let troubleID = model.finderTrouble {
-                let name = model.state.devices[troubleID]?.name ?? model.device?.name ?? "the phone"
-                FinderTroubleNote(name: name) {
-                    withAnimation(.pulliNavigation) { model.finderTrouble = nil }
-                } onBrowse: {
-                    withAnimation(.pulliNavigation) { model.finderTrouble = nil }
-                    if model.section != .phone {
-                        model.show(.phone)
-                    }
-                    model.openBrowser(at: "/")
-                }
-                .padding(.top, 58)
-                .transition(.move(edge: .top).combined(with: .opacity))
-            } else if let note = model.connectedNote {
-                ConnectedNote(text: note)
-                    .padding(.top, 58)
-                    .transition(.move(edge: .top).combined(with: .opacity))
-            }
         }
         .overlay(alignment: .topLeading) {
             // Next to the window's buttons, as in Finder.
@@ -231,9 +238,12 @@ private struct TitleBar: View {
 
     var body: some View {
         ZStack {
-            if let title = route.title {
+            // A short note ("myGalaxy connected") takes the title's place for a few seconds:
+            // the title bar has room, and nothing on the page is covered.
+            if model.connectedNote == nil, let title = route.title {
                 Text(title).font(.pulli(13, .semibold)).foregroundStyle(tone.t2)
                     .accessibilityAddTraits(.isHeader)
+                    .transition(.opacity)
             }
             HStack(spacing: 8) {
                 if case .storageMap(let device) = route {
@@ -252,12 +262,28 @@ private struct TitleBar: View {
                     .keyboardShortcut("[", modifiers: .command)
                     .padding(.leading, sidebarWidth + 24)
                 }
-                Spacer()
+                Spacer(minLength: 12)
+                if let note = model.connectedNote {
+                    // Centred in the free space between the sidebar and the buttons.
+                    ConnectedNote(text: note)
+                        .transition(.scale(scale: 0.9).combined(with: .opacity))
+                    Spacer(minLength: 12)
+                }
                 trailing
             }
+            .padding(.leading, model.connectedNote != nil && !hasLeadingButton ? sidebarWidth : 0)
             .padding(.trailing, 16)
         }
         .frame(height: 52)
+    }
+
+    /// A back button sits at the leading edge on these pages.
+    private var hasLeadingButton: Bool {
+        switch route {
+        case .storageMap: true
+        case .browse: model.backTitle != nil
+        default: false
+        }
     }
 
     @ViewBuilder
@@ -343,8 +369,8 @@ private struct ConnectedNote: View {
             Image(systemName: "checkmark.circle.fill").foregroundStyle(tone.green)
             Text(text).font(.pulli(13, .medium)).lineLimit(1)
         }
-        .padding(.horizontal, 16).padding(.vertical, 10)
-        .panel(radius: 14)
+        .padding(.horizontal, 14).padding(.vertical, 6)
+        .panel(radius: 14, opaque: true)
         .allowsHitTesting(false)
         .accessibilityElement(children: .combine)
     }

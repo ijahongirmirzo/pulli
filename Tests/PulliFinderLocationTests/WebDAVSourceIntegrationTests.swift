@@ -87,12 +87,20 @@ private final class Harness: @unchecked Sendable {
 
         // 1. list root and a folder
         let rootItems = try await source.list("/")
-        #expect(rootItems.contains(where: { $0.path == "/DCIM" && $0.isFolder }))
-        #expect(rootItems.contains(where: { $0.path == "/Download" && $0.isFolder }))
+        // Split for Xcode 26: the combined #expect is too slow to type-check on CI.
+        let found1 = rootItems.contains { (item: RemoteItem) -> Bool in item.path == "/DCIM" && item.isFolder }
+        #expect(found1)
+        // Split for Xcode 26: the combined #expect is too slow to type-check on CI.
+        let found2 = rootItems.contains { (item: RemoteItem) -> Bool in item.path == "/Download" && item.isFolder }
+        #expect(found2)
 
         let cameraItems = try await source.list("/DCIM/Camera")
-        #expect(cameraItems.contains(where: { $0.path == "/DCIM/Camera/a.jpg" && !$0.isFolder && $0.size == 300_000 }))
-        #expect(cameraItems.contains(where: { $0.path == "/DCIM/Camera/clip.mp4" && !$0.isFolder && $0.size == 5_000_000 }))
+        // Split for Xcode 26: the combined #expect is too slow to type-check on CI.
+        let found3 = cameraItems.contains { (item: RemoteItem) -> Bool in item.path == "/DCIM/Camera/a.jpg" && !item.isFolder && item.size == 300_000 }
+        #expect(found3)
+        // Split for Xcode 26: the combined #expect is too slow to type-check on CI.
+        let found4 = cameraItems.contains { (item: RemoteItem) -> Bool in item.path == "/DCIM/Camera/clip.mp4" && !item.isFolder && item.size == 5_000_000 }
+        #expect(found4)
 
         // 2. item(at:)
         let photoItem = try await source.item(at: "/DCIM/Camera/a.jpg")

@@ -16,6 +16,9 @@ enum Snapshots {
         let scenarios: [(String, (AppModel) -> Void)] = [
             ("welcome", { $0.state.devices = [:]; $0.selectedDeviceID = nil }),
             ("overview", { _ in }),
+            ("overview-connected-note", { $0.connectedNote = "myGalaxy connected · ready to copy" }),
+            ("browse-connected-note", { $0.browsePath = "/DCIM/Camera"; $0.connectedNote = "myGalaxy connected · ready to copy" }),
+            ("overview-banner", { $0.banner = "Could not open myGalaxy in Finder: the phone was disconnected." }),
             ("guide", { $0.state.devices[phone.id]?.state = .notInFileTransferMode }),
             ("guide-locked", { $0.state.devices[phone.id]?.state = .locked }),
             ("busy", { $0.state.devices[phone.id]?.state = .heldBy(appName: "Photos") }),

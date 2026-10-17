@@ -379,7 +379,9 @@ private struct CardShell<Art: View, Header: View, Footer: View>: View {
     var body: some View {
         let shape = RoundedRectangle(cornerRadius: 18, style: .continuous)
         VStack(alignment: .leading, spacing: 0) {
-            HStack { header; Spacer() }
+            // The art sits behind the top-right corner: keep the title clear of it (a long title
+            // wraps to a second line instead of running under the icon).
+            HStack(alignment: .top, spacing: 0) { header; Spacer(minLength: 104) }
             Spacer(minLength: 0)
             HStack(alignment: .bottom, spacing: 12) { footer }
         }
