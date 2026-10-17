@@ -1,3 +1,5 @@
+<p align="center"><img src="docs/images/pulli-icon.png" width="160" alt="Pulli app icon: a blue pulley shaped like the letter p, with a cord ending in a down arrow"></p>
+
 <h1 align="center">Pulli</h1>
 
 <p align="center">
