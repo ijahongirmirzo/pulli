@@ -7,8 +7,8 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/ijahongirmirzo/pulli/releases/latest"><b>Download for Mac</b></a>
-  &nbsp;·&nbsp; macOS 26 or later, Apple silicon &nbsp;·&nbsp; free and open source
+  <a href="https://github.com/ijahongirmirzo/pulli/releases/latest"><img src="docs/images/download-button.png" width="374" alt="Download Pulli for Mac — free, macOS 26 or later, Apple silicon"></a>
+  <br><sub>Free and open source · notarised by Apple · updates itself</sub>
 </p>
 
 <picture>
