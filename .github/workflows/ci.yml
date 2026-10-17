@@ -24,6 +24,7 @@ jobs:
       - name: Build
         run: swift build
       - name: Test
-        run: swift test
+        # One test at a time: CI runners are slow, and a crash then names its test.
+        run: swift test --no-parallel
       - name: Test FinderLocations package
         run: swift test --package-path Packages/FinderLocations

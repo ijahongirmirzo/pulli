@@ -23,6 +23,11 @@ let package = Package(
     products: [
         .executable(name: "pulli-cli", targets: ["pulli-cli"]),
         .executable(name: "Pulli", targets: ["Pulli"]),
+        // Pulli's core, for other apps (docs/REUSING.md): the phone-session seam, the resumable
+        // transfer engine and journal, and a simulated phone with fault injection for tests.
+        .library(name: "DeviceAPI", targets: ["DeviceAPI"]),
+        .library(name: "TransferCore", targets: ["TransferCore"]),
+        .library(name: "MockDevice", targets: ["MockDevice"]),
     ],
     dependencies: [
         .package(path: "Packages/FinderLocations"),

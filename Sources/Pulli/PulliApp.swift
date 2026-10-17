@@ -6,6 +6,7 @@ import SwiftUI
 //   Pulli                      real phones (engine in the app, or the background helper)
 //   Pulli --mock               a simulated phone
 //   Pulli --snapshot DIR       render every screen to PNG files and exit (design checks)
+//   Pulli --readme-frames DIR  render the frames of the README's animation (one copy, start to finish)
 //   Pulli --art-poses DIR      render the 3D art at the pointer's extremes (checks for cut-off edges;
 //                              PULLI_POSE_WIDTH=900 renders it large, to check bevels for seams)
 //   PULLI_ART_POINTER=1,-1     with --snapshot: every screen's art turned to that extreme
@@ -23,6 +24,10 @@ enum Entry {
         }
         if let index = arguments.firstIndex(of: "--snapshot"), arguments.indices.contains(index + 1) {
             MainActor.assumeIsolated { Snapshots.render(to: URL(fileURLWithPath: arguments[index + 1])) }
+            exit(0)
+        }
+        if let index = arguments.firstIndex(of: "--readme-frames"), arguments.indices.contains(index + 1) {
+            MainActor.assumeIsolated { Snapshots.renderReadmeFrames(to: URL(fileURLWithPath: arguments[index + 1])) }
             exit(0)
         }
         if let index = arguments.firstIndex(of: "--dmg-background"), arguments.indices.contains(index + 1) {
@@ -233,7 +238,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, SPUUpdaterDelegate {
     static var shouldEnableUpdater: Bool {
         if ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] == "1" { return false }
         if CommandLine.arguments.contains("--mock") || ProcessInfo.processInfo.environment["PULLI_MOCK"] == "1" { return false }
-        if CommandLine.arguments.contains("--snapshot") || CommandLine.arguments.contains("--themes")
+        if CommandLine.arguments.contains("--snapshot") || CommandLine.arguments.contains("--readme-frames") || CommandLine.arguments.contains("--themes")
             || CommandLine.arguments.contains("--art-poses") || CommandLine.arguments.contains("--flyer")
             || CommandLine.arguments.contains("--dmg-background") || CommandLine.arguments.contains("--icon") { return false }
         if NSClassFromString("XCTest") != nil || ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil { return false }

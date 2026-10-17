@@ -6,6 +6,29 @@
         <description>Most recent updates to Pulli.</description>
         <language>en</language>
         <item>
+            <title>Version 0.4.1</title>
+            <sparkle:version>20261017225024</sparkle:version>
+            <sparkle:shortVersionString>0.4.1</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
+            <pubDate>Sat, 17 Oct 2026 17:52:04 +0000</pubDate>
+            <description><![CDATA[
+<p>A polish update: cleaner screens while you copy.</p>
+<ul>
+<li><b>Notes never cover the page.</b> &quot;Phone connected&quot; now appears briefly in the title bar, and warnings sit above the page instead of floating over it.</li>
+<li><b>A steadier copy screen.</b> The title and file list no longer jump as the numbers grow.</li>
+<li><b>Tidier cards.</b> Long card titles such as &quot;New since last copy&quot; wrap neatly instead of running under their icons.</li>
+</ul>
+<p><b>Which Macs:</b> every Mac with Apple silicon — an M1 chip or newer — running macOS 26 Tahoe or later. Intel Macs are not supported.</p>
+<p><b>Install or update:</b> Pulli updates itself. New here? Open the disk image and drag Pulli to Applications, or use Homebrew: `brew install --cask ijahongirmirzo/tap/pulli`</p>
+            ]]></description>
+            <enclosure
+                url="https://github.com/ijahongirmirzo/pulli/releases/download/v0.4.1/Pulli-0.4.1.dmg"
+                length="18923028"
+                type="application/octet-stream"
+                sparkle:edSignature="TbNHDFcvWFeFu3MYdpHZqkvgnZ/grg/DmOq1inStL2oTeHHhH7X/aUECm5PXjAH//YVxjrh9MjC7NGVHgBwXBg==" />
+        </item>
+
+        <item>
             <title>Version 0.4.0</title>
             <sparkle:version>20261017205529</sparkle:version>
             <sparkle:shortVersionString>0.4.0</sparkle:shortVersionString>

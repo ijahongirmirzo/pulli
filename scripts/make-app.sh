@@ -18,7 +18,7 @@ configuration=release
 # CFBundleVersion must be a strictly increasing timestamp for Sparkle (YYYYMMDDHHMMSS).
 build="$(date +%Y%m%d%H%M%S)"
 commit="$(git rev-parse --short HEAD 2>/dev/null || echo dev)"
-short_version="0.4.0"
+short_version="0.4.1"
 
 # Feedback email: the environment wins over Config/release.env (which may hold an empty value).
 env_feedback_email="${PULLI_FEEDBACK_EMAIL:-}"
