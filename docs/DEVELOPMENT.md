@@ -167,7 +167,9 @@ images are attached to this repository's GitHub Releases.
 
 ### 2. Creating a release
 
-1. Write the user-facing release notes in `release-notes.md`.
+1. Raise `short_version` in `scripts/make-app.sh` (each release has its own version: the tag is
+   `v<version>` and the download `Pulli-<version>.dmg`), and write the user-facing release notes
+   in `release-notes.md`.
 2. Run the release script:
 
    ```sh

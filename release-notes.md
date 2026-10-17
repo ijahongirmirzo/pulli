@@ -7,3 +7,7 @@ The first public release of Pulli: copy photos and files from your Android phone
 - **Storage map**, messaging-app media, a menu bar item, desktop widgets, notifications, Shortcuts actions and a cable check.
 - **Automatic updates** and **Send Feedback** in the Help menu.
 - **Privacy:** Clear History forgets past copies, the activity log and saved previews.
+
+**Which Macs:** every Mac with Apple silicon — an M1 chip or newer — running macOS 26 Tahoe or later. That is every MacBook Air, MacBook Pro, Mac mini, iMac, Mac Studio and Mac Pro with Apple silicon, from late 2020 on. Intel Macs are not supported. To check yours: Apple menu › About This Mac shows "Chip: Apple M…".
+
+**Install:** open the disk image and drag Pulli to Applications, or use Homebrew: `brew install --cask ijahongirmirzo/tap/pulli`

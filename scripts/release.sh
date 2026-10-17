@@ -25,10 +25,16 @@ PULLI_RELEASE=1 scripts/make-dmg.sh
 app="build/Pulli.app"
 short_version=$(/usr/libexec/PlistBuddy -c "Print CFBundleShortVersionString" "$app/Contents/Info.plist" 2>/dev/null || echo "0.4.0")
 build=$(/usr/libexec/PlistBuddy -c "Print CFBundleVersion" "$app/Contents/Info.plist" 2>/dev/null)
-dmg="build/Pulli-${short_version}-${build}.dmg"
-
-if [[ ! -f "$dmg" ]]; then
-    echo "Error: Disk image $dmg was not found" >&2
+built="build/Pulli-${short_version}-${build}.dmg"
+if [[ ! -f "$built" ]]; then
+    echo "Error: Disk image $built was not found" >&2
+    exit 1
+fi
+# What people download: Pulli-<version>.dmg under the tag v<version>; the build number stays inside.
+dmg="build/Pulli-${short_version}.dmg"
+cp "$built" "$dmg"
+if gh release view "v${short_version}" --repo ijahongirmirzo/pulli >/dev/null 2>&1; then
+    echo "Error: v${short_version} is already released. Raise short_version in scripts/make-app.sh first." >&2
     exit 1
 fi
 
@@ -66,8 +72,8 @@ build = "$build"
 pub_date = "$pub_date"
 length = "$length"
 signature = "$signature"
-dmg_name = "Pulli-${short_version}-${build}.dmg"
-tag_name = "v${short_version}-${build}"
+dmg_name = "Pulli-${short_version}.dmg"
+tag_name = "v${short_version}"
 url = f"https://github.com/ijahongirmirzo/pulli/releases/download/{tag_name}/{dmg_name}"
 
 notes_path = "$release_notes_file"
@@ -144,7 +150,7 @@ with open(appcast_path, "w", encoding="utf-8") as f:
 print(f"Updated {appcast_path} with Version {short_version} ({build})")
 PY
 
-tag="v${short_version}-${build}"
+tag="v${short_version}"
 title="Pulli ${short_version}"
 
 gh_cmd="gh release create \"$tag\" \"$dmg\" --repo ijahongirmirzo/pulli --title \"$title\" --notes-file \"$release_notes_file\""
@@ -161,9 +167,9 @@ if $publish; then
     if [[ -f "$cask" ]]; then
         echo "› updating the Homebrew cask"
         sha=$(shasum -a 256 "$dmg" | cut -d' ' -f1)
-        sed -i '' -E "s/^  version \".*\"/  version \"${short_version},${build}\"/; s/^  sha256 \".*\"/  sha256 \"${sha}\"/" "$cask"
+        sed -i '' -E "s/^  version \".*\"/  version \"${short_version}\"/; s/^  sha256 \".*\"/  sha256 \"${sha}\"/" "$cask"
         git -C "$tap_dir" add Casks/pulli.rb
-        git -C "$tap_dir" commit -m "Pulli ${short_version} (${build})"
+        git -C "$tap_dir" commit -m "Pulli ${short_version}"
         git -C "$tap_dir" push origin main
     else
         echo "› no Homebrew tap at $tap_dir (set PULLI_TAP_DIR); skipped the cask"

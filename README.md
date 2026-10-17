@@ -106,9 +106,13 @@ all — copies, the activity log and saved previews — whenever you like.
 Pulli finds the phone within a few seconds and shows what is on it. Pulli updates itself (you
 can turn automatic checks off in Settings); with Homebrew, `brew upgrade` works too.
 
-**Requirements:** a Mac with Apple silicon and macOS 26 or later, and an Android phone with a USB
-cable. Tested with Samsung Galaxy and Lenovo phones; other Android phones that offer "File
-transfer" should work too.
+**Which Macs:** every Mac with Apple silicon — an M1 chip or newer — running macOS 26 Tahoe or
+later. That is every MacBook Air, MacBook Pro, Mac mini, iMac, Mac Studio and Mac Pro with Apple
+silicon, from late 2020 on. Intel Macs are not supported. To check yours: Apple menu › About This
+Mac shows "Chip: Apple M…".
+
+**Which phones:** any Android phone with a USB cable that carries data and offers "File transfer".
+Tested with Samsung Galaxy and Lenovo phones.
 
 ## Privacy
 
