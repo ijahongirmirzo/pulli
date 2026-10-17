@@ -33,6 +33,35 @@ around one promise: **a copy that has started will finish, with every byte check
 - **It just finds the phone.** No app to install on the phone. Pulli quietly frees the phone
   from macOS's own camera service and tells you, in plain words, what to tap if it is needed.
 
+## Built for big transfers
+
+Copying 50 GB of photos and videos from a phone takes a while, and over USB a lot can happen in
+that time. Most tools then start over from zero, or leave a broken file behind. Pulli doesn't:
+**an interrupted copy always continues from where it stopped — even halfway through a 4 GB
+video.**
+
+| If this happens mid-copy… | …Pulli |
+|---|---|
+| The cable is pulled, or the phone is unplugged | Pauses, waits for the same phone, and continues by itself when it is back — in any port |
+| The phone locks, or its USB mode is switched | Pauses, tells you what to tap, continues as soon as the phone allows it |
+| The Mac goes to sleep, or you close the lid | Keeps the Mac awake while copying; if it sleeps anyway, continues when it wakes |
+| Pulli is quit, crashes or is force-quit | Continues from the last saved block the next time it runs |
+| The Mac restarts | Picks up the unfinished copy when Pulli opens again (at login, if you let it) |
+| The disk fills up | Pauses with a clear message, and continues once there is room |
+
+**How it works.** Pulli copies in 4 MB blocks. Each block is written to disk and saved before
+Pulli records it in its copy journal, so the journal never claims more than is really on your
+Mac. On resume, Pulli checks the file on the phone has not changed and continues from the last
+saved block — nothing already copied is read again. A file keeps a `.part` name until it is
+complete, so a half-copied file never looks finished, and Pulli records a SHA-256 fingerprint of
+every file as it copies, which Free Up Space uses to check each copy against the phone.
+
+**Tested on a real phone** (Samsung Galaxy Z Fold7 over USB): a 5.6 GB camera folder of 166 files
+was force-killed twice, the second time in the middle of a video, and every file came out
+byte-identical to the phone's; a 1.39 GB video killed at 318 MB continued from there and matched
+exactly. The engine is also run through a simulated phone that fails on purpose — cable pulls,
+stalls, short reads, power loss — and every copy must come out byte-identical.
+
 ## What it does
 
 <picture>
