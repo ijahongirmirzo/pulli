@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" xmlns:dc="http://purl.org/dc/elements/1.1/">
+    <channel>
+        <title>Pulli Updates</title>
+        <link>https://raw.githubusercontent.com/ijahongirmirzo/pulli/main/appcast.xml</link>
+        <description>Most recent updates to Pulli.</description>
+        <language>en</language>
+        <item>
+            <title>Version 0.4.0</title>
+            <sparkle:version>20261017205529</sparkle:version>
+            <sparkle:shortVersionString>0.4.0</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
+            <pubDate>Sat, 17 Oct 2026 15:57:00 +0000</pubDate>
+            <description><![CDATA[
+<p>The first public release of Pulli: copy photos and files from your Android phone to your Mac, and never lose progress.</p>
+<ul>
+<li><b>Copies that finish.</b> A pulled cable, a locked phone, a sleeping Mac or a crash pauses the copy; it continues from the exact byte where it stopped, and every file is checked.</li>
+<li><b>Only what is new.</b> Copy new photos in one click, and skip anything already on your Mac, even under another name.</li>
+<li><b>Your phone in Finder.</b> The phone appears under Locations in Finder&#x27;s sidebar; copy and paste or drag files both ways.</li>
+<li><b>Free up space safely.</b> Delete originals from the phone only after each copy is checked against it.</li>
+<li><b>Storage map</b>, messaging-app media, a menu bar item, desktop widgets, notifications, Shortcuts actions and a cable check.</li>
+<li><b>Automatic updates</b> and <b>Send Feedback</b> in the Help menu.</li>
+<li><b>Privacy:</b> Clear History forgets past copies, the activity log and saved previews.</li>
+</ul>
+            ]]></description>
+            <enclosure
+                url="https://github.com/ijahongirmirzo/pulli/releases/download/v0.4.0-20261017205529/Pulli-0.4.0-20261017205529.dmg"
+                length="18890955"
+                type="application/octet-stream"
+                sparkle:edSignature="wHV4SJ5i0d0uEjE59/EG9XkYGQLSSfz+Ldl9/QcjdIgDeh1RbCvzb2ojyQq7I6BhybIkft1z0jrYm6mcxbWDBA==" />
+        </item>
+    </channel>
+</rss>
