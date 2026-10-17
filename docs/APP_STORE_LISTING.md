@@ -50,7 +50,7 @@ ImageCaptureCore). Character limits in brackets.
 > Requires a Mac with Apple silicon and macOS 26 or later, and a phone with a USB cable that
 > carries data.
 
-**Keywords** [100]: `phone,photos,transfer,usb,copy,import,camera,videos,backup,resume,ptp,pictures,media,cable` (88)
+**Keywords** [100]: `phone,photos,transfer,usb,copy,import,camera,videos,backup,resume,ptp,pictures,media,cable` (90)
 
 **Support URL:** https://github.com/ijahongirmirzo/pulli/issues
 
