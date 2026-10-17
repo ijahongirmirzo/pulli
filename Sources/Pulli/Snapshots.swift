@@ -74,6 +74,81 @@ enum Snapshots {
         print("wrote snapshots to \(folder.path)")
     }
 
+    /// `Pulli --readme-frames DIR`: the frames of the README's animation, dark and light, from the
+    /// sample phone. One copy of its Camera folder from start to finish (waiting, ready, copying,
+    /// unplugged, copying again, done); every frame shows the same batch, so its numbers carry on
+    /// from one scene to the next. Frames only: another tool puts them together.
+    static func renderReadmeFrames(to folder: URL) {
+        _ = NSApplication.shared
+        try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let files = cameraFiles
+        let totalBytes = files.reduce(UInt64(0)) { $0 + $1.sizeBytes }
+        let speed = 31_400_000.0
+        // How long the phone stays unplugged; the finished screen's time and average include it.
+        let unplugged: TimeInterval = 8
+        let now = Date()
+
+        /// The Camera copy with `fraction` of its bytes on the Mac, files finished in order.
+        func batch(_ fraction: Double, _ phase: BatchPhase, resumed: Bool = false) -> BatchSnapshot {
+            let bytesDone = UInt64((Double(totalBytes) * fraction).rounded())
+            var finished = 0
+            var finishedBytes: UInt64 = 0
+            while finished < files.count, finishedBytes + files[finished].sizeBytes <= bytesDone {
+                finishedBytes += files[finished].sizeBytes
+                finished += 1
+            }
+            let recent = (0..<finished).reversed().prefix(BatchSnapshot.recentLimit).map {
+                FileSnapshot(jobID: Int64($0), name: files[$0].name, sizeBytes: files[$0].sizeBytes, bytesDone: files[$0].sizeBytes, state: .done)
+            }
+            let current = finished < files.count
+                ? FileSnapshot(jobID: Int64(finished), name: files[finished].name, sizeBytes: files[finished].sizeBytes,
+                               bytesDone: bytesDone - finishedBytes, state: .copying)
+                : nil
+            let copying = phase == .copying
+            let remaining = Double(totalBytes - bytesDone)
+            let elapsed = Double(bytesDone) / speed + (resumed ? unplugged : 0)
+            return BatchSnapshot(id: 13, deviceID: phone.id, deviceName: "myGalaxy", title: "Camera",
+                                 destinationPath: NSHomeDirectory() + "/Downloads/myGalaxy", phase: phase,
+                                 filesTotal: files.count, filesDone: finished, filesSkipped: 0, filesNeedingAttention: 0,
+                                 bytesTotal: totalBytes, bytesDone: bytesDone, bytesPerSecond: copying ? speed : 0,
+                                 // No "1 s left" on the last frame, when nothing is left.
+                                 secondsRemaining: copying && remaining > 0 ? remaining / speed : nil,
+                                 current: phase == .completed ? nil : current, recent: recent,
+                                 createdAt: now.addingTimeInterval(-elapsed), finishedAt: phase == .completed ? now : nil)
+        }
+
+        /// The sample state with only this copy and one older, finished one (nothing else running
+        /// or needing attention to catch the eye).
+        func model(_ batch: BatchSnapshot?, connected: Bool = true) -> AppModel {
+            var story = state
+            story.batches = story.batches.filter { $0.key == 9 }
+            if let batch { story.batches[batch.id] = batch }
+            if !connected { story.devices = [:] }
+            let model = AppModel(preview: story, summaries: [phone.id: summary])
+            model.previewListings = ["/DCIM/Camera": cameraFiles]
+            model.picks = [.camera]
+            if let batch { model.section = .copies; model.focusedBatchID = batch.id }
+            return model
+        }
+
+        var frames: [(String, AppModel)] = [("01-waiting", model(nil, connected: false)), ("02-ready", model(nil))]
+        for index in 0..<30 {
+            frames.append((String(format: "03-copying-%03d", index), model(batch(0.62 * Double(index) / 29, .copying))))
+        }
+        frames.append(("04-unplugged", model(batch(0.62, .paused(.phoneDisconnected)), connected: false)))
+        for index in 0..<20 {
+            frames.append((String(format: "05-resuming-%03d", index), model(batch(0.62 + 0.38 * Double(index) / 19, .copying, resumed: true))))
+        }
+        frames.append(("06-done", model(batch(1, .completed, resumed: true))))
+
+        for dark in [true, false] {
+            for (name, model) in frames {
+                write(MainWindow().environment(model), size: CGSize(width: 1120, height: 720), dark: dark, to: folder, name: name)
+            }
+        }
+        print("wrote README frames to \(folder.path)")
+    }
+
     /// `Pulli --themes DIR`: the phone screen in every theme, dark and light, one file each, and a
     /// board with all of them side by side (themes.png) to choose from.
     static func renderThemes(to folder: URL) {

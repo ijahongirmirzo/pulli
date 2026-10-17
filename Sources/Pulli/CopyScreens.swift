@@ -25,11 +25,18 @@ struct CopyingView: View {
                 VStack(alignment: .leading, spacing: 14) {
                     Text(scanning ? "Looking through \(batch.title)…" : "Copying from \(batch.deviceName)…")
                         .font(.pulli(30, .regular)).tracking(-0.3).lineLimit(1).minimumScaleFactor(0.7)
-                    HStack(spacing: 8) {
-                        if batch.bytesPerSecond > 0 { Chip(text: Format.speed(batch.bytesPerSecond)) }
-                        if let left = batch.secondsRemaining, !scanning { Chip(text: "\(Format.duration(left)) left") }
+                    // Two fixed lines of single-line chips: as the numbers grow nothing wraps, so the
+                    // title above never jumps.
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack(spacing: 8) {
+                            if batch.bytesPerSecond > 0 { Chip(text: Format.speed(batch.bytesPerSecond)).fixedSize() }
+                            if let left = batch.secondsRemaining, !scanning { Chip(text: "\(Format.duration(left)) left").fixedSize() }
+                            // Holds the line's height before the first speed and time are known.
+                            Chip(text: " ").hidden().frame(width: 0)
+                        }
                         Chip(text: scanning ? "\(Format.count(batch.filesTotal, "file")) found"
                              : "\(batch.filesDone.formatted()) of \(Format.count(batch.filesTotal, "file")) · \(Format.bytes(batch.bytesDone)) of \(Format.bytes(batch.bytesTotal))")
+                            .fixedSize()
                     }
                     FileList(batch: batch).padding(.top, 4)
                     HStack(spacing: 10) {
@@ -87,6 +94,8 @@ private struct FileList: View {
                 Text(batch.phase == .scanning ? "Finding files…" : "Starting…").font(.pulli(13.5)).foregroundStyle(tone.t2).frame(height: 48)
             }
         }
+        // Room for all five rows from the start, so the screen does not shift as files finish.
+        .frame(height: 5 * 48, alignment: .top)
         .animation(.easeInOut(duration: 0.3), value: batch.recent.first?.jobID)
     }
 

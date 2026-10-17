@@ -16,8 +16,8 @@
 <p align="center">or with <a href="https://brew.sh">Homebrew</a>:&nbsp; <code>brew install --cask ijahongirmirzo/tap/pulli</code></p>
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/images/hero-dark.jpg">
-  <img alt="Pulli showing a connected Galaxy phone: new photos, camera, screenshots and downloads, with a tip that a USB 3 cable would be three times faster" src="docs/images/hero-light.jpg">
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/pulli-in-action-dark.webp">
+  <img alt="Pulli in action: the phone is found, its photos are ready, the copy runs, the cable is pulled at 62 percent, Pulli waits, then carries on by itself to Copy complete" src="docs/images/pulli-in-action-light.webp">
 </picture>
 
 ## Why Pulli

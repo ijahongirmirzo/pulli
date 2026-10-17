@@ -6,6 +6,7 @@ import SwiftUI
 
 struct WelcomeView: View {
     @Environment(\.tone) private var tone
+    @Environment(\.isSnapshot) private var isSnapshot
     @State private var float = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -33,9 +34,16 @@ struct WelcomeView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .overlay(alignment: .bottomTrailing) {
-            Link("Phone not showing up?", destination: URL(string: "https://support.google.com/android/answer/9064445")!)
-                .font(.pulli(12.5, .semibold)).foregroundStyle(tone.t2)
-                .padding(24)
+            Group {
+                // ImageRenderer draws a link as a yellow placeholder, so snapshots show its words.
+                if isSnapshot {
+                    Text("Phone not showing up?")
+                } else {
+                    Link("Phone not showing up?", destination: URL(string: "https://support.google.com/android/answer/9064445")!)
+                }
+            }
+            .font(.pulli(12.5, .semibold)).foregroundStyle(tone.t2)
+            .padding(24)
         }
         // No float: the 3D phone turns toward the pointer, and a SwiftUI animation that never
         // stops costs CPU the whole time the window is open.
