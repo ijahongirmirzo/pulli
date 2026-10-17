@@ -35,8 +35,10 @@ final class WidgetFeed {
 
     private func write(_ snapshot: WidgetSnapshot) {
         let file = WidgetSnapshot.containerFile
+#if !PULLI_APP_STORE
         let container = file.deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
         guard FileManager.default.fileExists(atPath: container.path) else { return }
+#endif
         try? FileManager.default.createDirectory(at: file.deletingLastPathComponent(), withIntermediateDirectories: true)
         guard let data = try? JSONEncoder().encode(snapshot) else { return }
         try? data.write(to: file, options: .atomic)
@@ -44,6 +46,7 @@ final class WidgetFeed {
         WidgetCenter.shared.reloadAllTimelines()
     }
 
+#if !PULLI_APP_STORE
     /// After Pulli is replaced (an update, or a new copy dragged in), macOS can keep the old
     /// widget process alive. Its own files are gone, so it draws only grey placeholders until it
     /// is restarted. Stops a widget process older than the widget on disk; macOS starts the new
@@ -72,6 +75,7 @@ final class WidgetFeed {
         }
         if stopped { WidgetCenter.shared.reloadAllTimelines() }
     }
+#endif
 
     static func snapshot(_ model: AppModel) -> WidgetSnapshot {
         let copies = model.state.batchesForMenu.filter { AppModel.isActive($0) }.prefix(3).map { batch -> WidgetSnapshot.Copy in

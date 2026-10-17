@@ -64,7 +64,9 @@ extension AppModel {
             switch device.state {
             case .ready:
                 if let browsePath { return .browse(device, path: browsePath) }
+#if !PULLI_APP_STORE
                 if showingStorageMap { return .storageMap(device) }
+#endif
                 return .overview(device)
             case .locked, .notInFileTransferMode: return .guide(device)
             case .heldBy(let app): return .busy(device, app: app)
@@ -172,6 +174,7 @@ struct MainWindow: View {
         .frame(minWidth: 1000, minHeight: 660)
         .ignoresSafeArea()
         .sheet(isPresented: Binding(get: { model.showingCableHelp }, set: { model.showingCableHelp = $0 })) { CableHelpSheet() }
+#if !PULLI_APP_STORE
         // Opened from the disk image: offer to move to Applications (once the window is up).
         .sheet(isPresented: $offeringMove) { MoveToApplicationsView { offeringMove = false } }
         .onAppear {
@@ -179,6 +182,7 @@ struct MainWindow: View {
             // A timer, not a task: the window's first moments rebuild it, which would cancel a task.
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { offeringMove = true }
         }
+#endif
     }
 
     private func routeIdentity(_ route: Route) -> String {
@@ -246,6 +250,7 @@ private struct TitleBar: View {
                     .transition(.opacity)
             }
             HStack(spacing: 8) {
+#if !PULLI_APP_STORE
                 if case .storageMap(let device) = route {
                     Button { model.closeStorageMap() } label: {
                         Label(device.name, systemImage: "chevron.left").font(.pulli(13, .semibold))
@@ -254,6 +259,7 @@ private struct TitleBar: View {
                     .keyboardShortcut("[", modifiers: .command)
                     .padding(.leading, sidebarWidth + 24)
                 }
+#endif
                 if case .browse = route, let back = model.backTitle {
                     Button { model.goBack() } label: {
                         Label(back, systemImage: "chevron.left").font(.pulli(13, .semibold))
@@ -296,13 +302,17 @@ private struct TitleBar: View {
             .buttonStyle(PillButtonStyle())
             .help("Show the phone in Finder's sidebar like a drive: browse, open and drag files both ways.")
             .disabled(model.driveStatus != nil)
+#if !PULLI_APP_STORE
             Button { model.openStorageMap() } label: { Label("Storage Map", systemImage: "square.grid.3x3.square") }
                 .buttonStyle(PillButtonStyle())
+#endif
             Button { model.openBrowser(at: "/") } label: { Label("Browse Phone…", systemImage: "folder") }
                 .buttonStyle(PillButtonStyle())
+#if !PULLI_APP_STORE
         case .storageMap:
             Button { model.rescanStorage() } label: { Label("Scan Again", systemImage: "arrow.clockwise") }
                 .buttonStyle(PillButtonStyle())
+#endif
         case .browse(_, let path):
             Button { model.openInFinder() } label: { Image(systemName: "externaldrive.connected.to.line.below") }
                 .buttonStyle(PillButtonStyle())

@@ -209,6 +209,7 @@ final class AppModel {
         Self.cleanIncoming()
         connection = .starting
         helperProblem = nil
+#if !PULLI_APP_STORE
         if HelperRegistration.isEnabled, !mock {
             if await connectToHelper() { return }
             // A rebuilt or moved app has a new code signature; launchd will not start the old
@@ -217,6 +218,7 @@ final class AppModel {
             if await connectToHelper() { return }
             helperProblem = "The background helper is not responding, so copies run inside Pulli for now."
         }
+#endif
         do {
             let engine = try await EmbeddedEngine.start(mock: mock, workerURL: Self.workerURL, version: Self.version, journalURL: journalURL)
             embedded = engine
@@ -225,7 +227,9 @@ final class AppModel {
             embedded = nil
             connection = .failed("Pulli could not talk to its copy engine.")
         } catch .helperRunning {
+#if !PULLI_APP_STORE
             if await connectToHelper() { return }
+#endif
             connection = .failed("Another copy of Pulli's engine is running but not answering. Quit Pulli and open it again.")
         } catch {
             connection = .failed(error.description)
@@ -376,6 +380,7 @@ final class AppModel {
     // MARK: State
 
     private func apply(_ new: PulliState) {
+#if !PULLI_APP_STORE
         AppDelegate.postponer.batchesDidUpdate(
             hasActiveCopies: RelaunchPostponer.hasActiveCopies(in: Array(new.batches.values))
         ) { [weak self] in
@@ -384,6 +389,7 @@ final class AppModel {
                 self?.banner = nil
             }
         }
+#endif
         // Screen changes caused by the phone or the engine crossfade; only the user's own
         // navigation slides.
         if navTransition != .fade { navTransition = .fade }
@@ -421,6 +427,17 @@ final class AppModel {
             summaries[id] = nil
             summaryTasks.removeValue(forKey: id)?.cancel()
         }
+#if PULLI_APP_STORE
+        for (id, oldBatch) in old.batches {
+            if let newBatch = new.batches[id] {
+                if Self.isActive(oldBatch) && !Self.isActive(newBatch) {
+                    SandboxBookmark.shared.stopAccessing(path: newBatch.destinationPath)
+                }
+            } else if Self.isActive(oldBatch) {
+                SandboxBookmark.shared.stopAccessing(path: oldBatch.destinationPath)
+            }
+        }
+#endif
         // A copy finished: what is already on the Mac changed for that phone.
         for batch in new.batches.values where batch.phase == .completed && old.batches[batch.id]?.phase != .completed {
             if let storageID = summaries[batch.deviceID]?.storageID {
@@ -519,9 +536,13 @@ final class AppModel {
     var destination: String {
         if let destinationOverride { return destinationOverride }
         if let saved = state.settings.defaultDestination { return saved }
+#if PULLI_APP_STORE
+        return FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Downloads/Pulli").path
+#else
         // Downloads › the phone's name, until another folder is chosen in Settings.
         let name = (device?.name ?? "Phone").replacingOccurrences(of: "/", with: "-")
         return FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Downloads/\(name)").path
+#endif
     }
 
     // MARK: Navigation
@@ -548,7 +569,9 @@ final class AppModel {
     func show(_ new: Section) {
         guard new != section else {
             if new == .phone, browsePath != nil { closeBrowser() }
+#if !PULLI_APP_STORE
             if new == .phone, showingStorageMap { closeStorageMap() }
+#endif
             return
         }
         navTransition = Self.order(new) > Self.order(section) ? .up : .down
@@ -723,10 +746,19 @@ final class AppModel {
     @discardableResult
     func copy(paths: [String], storageID: UInt32? = nil, destination explicit: String? = nil, navigate: Bool = true) async -> Int64? {
         guard let client, let device, let storage = storageID ?? device.storages.first?.id else { return nil }
-        let request = CreateBatchRequest(deviceID: device.id, storageID: storage, paths: paths, destinationPath: explicit ?? destination,
+        let dest = explicit ?? destination
+#if PULLI_APP_STORE
+        SandboxBookmark.shared.startAccessing(path: dest)
+#endif
+        let request = CreateBatchRequest(deviceID: device.id, storageID: storage, paths: paths, destinationPath: dest,
                                          organize: explicit == nil ? state.settings.organize : nil)
         do {
-            guard case .batchCreated(let id) = try await client.send(.createBatch(request)) else { return nil }
+            guard case .batchCreated(let id) = try await client.send(.createBatch(request)) else {
+#if PULLI_APP_STORE
+                SandboxBookmark.shared.stopAccessing(path: dest)
+#endif
+                return nil
+            }
             guard navigate else { return id }
             focusedBatchID = id
             show(.copies)
@@ -734,6 +766,9 @@ final class AppModel {
             browseRoot = nil
             return id
         } catch {
+#if PULLI_APP_STORE
+            SandboxBookmark.shared.stopAccessing(path: dest)
+#endif
             banner = "Could not start the copy: \(Self.describe(error))"
             return nil
         }
@@ -824,10 +859,19 @@ final class AppModel {
         panel.prompt = "Choose"
         panel.message = "Choose where Pulli copies to"
         panel.directoryURL = URL(fileURLWithPath: destination).deletingLastPathComponent()
-        if panel.runModal() == .OK, let url = panel.url { destinationOverride = url.path }
+        if panel.runModal() == .OK, let url = panel.url {
+#if PULLI_APP_STORE
+            SandboxBookmark.shared.saveBookmark(for: url)
+#endif
+            destinationOverride = url.path
+        }
     }
 
     func showInFinder(_ path: String) {
+#if PULLI_APP_STORE
+        SandboxBookmark.shared.startAccessing(path: path)
+        defer { SandboxBookmark.shared.stopAccessing(path: path) }
+#endif
         NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: path)
     }
 

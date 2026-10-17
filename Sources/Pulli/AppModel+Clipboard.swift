@@ -35,6 +35,7 @@ extension AppModel {
 
     /// Whether ⌘V has something to copy to the phone.
     var clipboardHasSomethingForPhone: Bool {
+#if !PULLI_APP_STORE
         let pasteboard = NSPasteboard.general
         if pasteboard.canReadObject(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true]) { return true }
         let types = pasteboard.types ?? []
@@ -42,8 +43,12 @@ extension AppModel {
             guard let uti = UTType(type.rawValue) else { return false }
             return uti.conforms(to: .image) || uti.conforms(to: .movie) || uti == .url
         }
+#else
+        return false
+#endif
     }
 
+#if !PULLI_APP_STORE
     // MARK: Clipboard and drops to phone
 
     /// ⌘V: copies what is on the clipboard into `folder` on the phone.
@@ -110,6 +115,7 @@ extension AppModel {
             banner = "Could not download \(web.absoluteString)."
         }
     }
+#endif
 
     func showToast(_ text: String) {
         toast = text

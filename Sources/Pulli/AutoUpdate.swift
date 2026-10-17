@@ -1,3 +1,4 @@
+#if !PULLI_APP_STORE
 import AppKit
 import Foundation
 import PulliProtocol
@@ -61,3 +62,5 @@ enum UpdateManager {
         SUStandardVersionComparator.default.compareVersion(a, toVersion: b)
     }
 }
+#endif
+

@@ -27,7 +27,13 @@ struct GuideView: View {
         HStack(spacing: 30) {
             PhoneArt(width: 290, palette: .teal, screen: steps[current].screen, cable: .plugged, fades: true)
             VStack(alignment: .leading, spacing: 16) {
-                Chip(text: locked ? "Connected · locked" : "Connected · charging only", color: tone.amber, fill: tone.amberFill, small: true)
+#if PULLI_APP_STORE
+                let unlockedChipText = "Connected · choose Transferring images"
+#else
+                let unlockedChipText = "Connected · charging only"
+#endif
+                let chipText = locked ? "Connected · locked" : unlockedChipText
+                Chip(text: chipText, color: tone.amber, fill: tone.amberFill, small: true)
                 Text("Let Pulli see your files").font(.pulli(32, .medium))
                 VStack(alignment: .leading, spacing: 6) {
                     ForEach(Array(steps.enumerated()), id: \.offset) { index, item in
@@ -129,11 +135,18 @@ struct GuideView: View {
     }
 
     static func chargingSteps(_ words: PhoneWords) -> [Step] {
-        [Step(title: "Unlock your phone", detail: "Pulli can only see files while the phone is unlocked.", screen: .unlock),
-         Step(title: "Swipe down from the top", detail: "The notifications open. One of them is about USB.", screen: .shade(words.shade(tapping: false))),
-         Step(title: "Tap the USB notification", detail: "It says \u{201C}\(words.notification)\u{201D}.", screen: .shade(words.shade(tapping: true))),
-         Step(title: "Choose \u{201C}\(words.fileTransfer)\u{201D}", detail: "Under \u{201C}\(words.useFor)\u{201D} in \(words.settingsTitle).", screen: .usb(words.usb)),
-         Step(title: "Tap \u{201C}Allow\u{201D} if asked", detail: "The phone may ask whether to allow access to phone data.", screen: .allow)]
+        var steps = [
+            Step(title: "Unlock your phone", detail: "Pulli can only see files while the phone is unlocked.", screen: .unlock),
+            Step(title: "Swipe down from the top", detail: "The notifications open. One of them is about USB.", screen: .shade(words.shade(tapping: false))),
+            Step(title: "Tap the USB notification", detail: "It says \u{201C}\(words.notification)\u{201D}.", screen: .shade(words.shade(tapping: true)))
+        ]
+#if PULLI_APP_STORE
+        steps.append(Step(title: "Choose \u{201C}Transferring images\u{201D}", detail: "Under \u{201C}\(words.useFor)\u{201D} in \(words.settingsTitle) (also called PTP).", screen: .usb(words.usb)))
+#else
+        steps.append(Step(title: "Choose \u{201C}\(words.fileTransfer)\u{201D}", detail: "Under \u{201C}\(words.useFor)\u{201D} in \(words.settingsTitle).", screen: .usb(words.usb)))
+#endif
+        steps.append(Step(title: "Tap \u{201C}Allow\u{201D} if asked", detail: "The phone may ask whether to allow access to phone data.", screen: .allow))
+        return steps
     }
 }
 
@@ -171,7 +184,12 @@ struct PhoneWords {
     }
 
     var usb: PhoneArt.USBScreen {
+#if PULLI_APP_STORE
+        let selectedIndex = options.firstIndex(where: { $0.contains("Transferring images") || $0 == "PTP" }) ?? 0
+        return PhoneArt.USBScreen(title: settingsTitle, heading: useFor, options: options, selected: selectedIndex)
+#else
         PhoneArt.USBScreen(title: settingsTitle, heading: useFor, options: options, selected: 0)
+#endif
     }
 }
 

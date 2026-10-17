@@ -152,15 +152,21 @@ struct BrowseView: View {
             }
             .frame(minWidth: 0, maxWidth: .infinity)
             .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width = $0 }
+#if !PULLI_APP_STORE
             .overlay { if dropTargeted { dropOverlay } }
             .panel(radius: 22)
             .modifier(DropFiles(enabled: !isSnapshot) { providers in model.receive(providers, into: path) } targeted: { dropTargeted = $0 })
             .animation(.easeOut(duration: 0.2), value: dropTargeted)
+#else
+            .panel(radius: 22)
+#endif
             .padding(.horizontal, 32).padding(.top, 16)
             footer
                 .frame(height: 96)
         }
+#if !PULLI_APP_STORE
         .overlay(alignment: .bottomTrailing) { uploadCards.padding(.trailing, 40).padding(.bottom, 120) }
+#endif
         .overlay(alignment: .bottomTrailing) {
             let empty = selection.isEmpty
             CornerAction {
@@ -226,16 +232,23 @@ struct BrowseView: View {
     // MARK: Mouse: clicks, painting ticks, dragging out, menus (ListMouse)
 
     private func mouse(_ rows: [FolderEntry], layout: ItemLayout) -> ListMouse {
-        ListMouse(layout: layout,
-                  isTicked: { rows.indices.contains($0) && selection[full(rows[$0].name)] != nil },
-                  click: { row, onTick, flags, count in click(row, rows, onTick: onTick, flags: flags, count: count) },
-                  paint: { from, to in paintTicks(rows, from: from, to: to) },
-                  paintEnded: { paint = nil },
-                  hover: { hoverRow = $0 },
-                  dragItems: { dragItems(rows, from: $0, layout: layout) },
-                  menu: { menu(rows, row: $0) },
-                  copyItems: clipboardPaths(rows).isEmpty ? nil : { model.copyToClipboard(clipboardPaths(rows)) },
-                  pasteItems: { model.pasteFromClipboard(into: path) })
+        let pasteAction: (() -> Void)? = {
+#if !PULLI_APP_STORE
+            return { model.pasteFromClipboard(into: path) }
+#else
+            return nil
+#endif
+        }()
+        return ListMouse(layout: layout,
+                         isTicked: { rows.indices.contains($0) && selection[full(rows[$0].name)] != nil },
+                         click: { row, onTick, flags, count in click(row, rows, onTick: onTick, flags: flags, count: count) },
+                         paint: { from, to in paintTicks(rows, from: from, to: to) },
+                         paintEnded: { paint = nil },
+                         hover: { hoverRow = $0 },
+                         dragItems: { dragItems(rows, from: $0, layout: layout) },
+                         menu: { menu(rows, row: $0) },
+                         copyItems: clipboardPaths(rows).isEmpty ? nil : { model.copyToClipboard(clipboardPaths(rows)) },
+                         pasteItems: pasteAction)
     }
 
     /// A click: only the tick box ticks (⌘-click ticks any row too, folders without opening them;
@@ -319,6 +332,7 @@ struct BrowseView: View {
         clipboard.keyEquivalent = "c"
         clipboard.keyEquivalentModifierMask = .command
         menu.addItem(clipboard)
+#if !PULLI_APP_STORE
         if model.clipboardHasSomethingForPhone {
             let paste = ClosureMenuItem("Paste into \(path == "/" ? device.name : (path as NSString).lastPathComponent)", symbol: "doc.on.clipboard.fill") {
                 model.pasteFromClipboard(into: path)
@@ -327,6 +341,7 @@ struct BrowseView: View {
             paste.keyEquivalentModifierMask = .command
             menu.addItem(paste)
         }
+#endif
         if let mac = onMac[path] {
             menu.addItem(ClosureMenuItem("Show the Copy on Your Mac", symbol: "magnifyingglass") {
                 NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: mac)])
@@ -455,9 +470,11 @@ struct BrowseView: View {
             }
             Spacer()
             viewControls
+#if !PULLI_APP_STORE
             Button { model.chooseFilesToUpload(to: path) } label: { Label("Add…", systemImage: "square.and.arrow.up") }
                 .buttonStyle(PillButtonStyle(small: true))
                 .help("Copy files from your Mac into this folder on the phone. You can also drop them here.")
+#endif
             Button("Select All") {
                 // Files already on the Mac are left out.
                 for entry in visible where onMac[full(entry.name)] == nil { selection[full(entry.name)] = entry }

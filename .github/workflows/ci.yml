@@ -28,3 +28,6 @@ jobs:
         run: swift test --no-parallel
       - name: Test FinderLocations package
         run: swift test --package-path Packages/FinderLocations
+      - name: Build App Store edition
+        run: swift build -c release -Xswiftc -DPULLI_APP_STORE --scratch-path .build-appstore
+

@@ -1,5 +1,6 @@
 import FileProvider
 import Foundation
+import PulliProtocol
 import RemoteFiles
 import RemoteFilesProvider
 
@@ -9,8 +10,8 @@ import RemoteFilesProvider
 /// so a restarted drive is picked up without restarting the extension.
 @objc(PulliFileProviderExtension)
 final class PulliFileProviderExtension: RemoteFilesExtension, @unchecked Sendable {
-    /// Shared with the app (team-prefixed: no provisioning profile needed for Developer ID).
-    static let appGroup = "8Q2D6948R4.app.pulli.mac"
+    /// Shared with the app.
+    static let appGroup = Edition.appGroup
 
     private var settings: RemoteFilesDomainSettings? {
         RemoteFilesDomainStore(suiteName: Self.appGroup).settings(for: domain.identifier.rawValue)

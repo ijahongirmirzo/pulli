@@ -124,10 +124,76 @@ Still to check on a phone: whether Image Capture reports the USB serial, whether
 storage-root folder, files over 4 GiB (offsets above 32 bits), and how the dates compare with
 libmtp's for the same files.
 
-## Suggested order
+## Stage 2: the sandboxed build (2026-10-17)
 
-1. Release the direct-download edition first (it is ready: signed and notarised) and open the
-   GitHub repository.
-2. Run spike 1. If ImageCaptureCore cannot read ranges or sees too little of the phone, the App
-   Store edition becomes "photos and videos only" and says so clearly.
-3. Build the App Store edition as a second app target sharing everything but the phone backend.
+A second build of Pulli for the Mac App Store, compiled with `-DPULLI_APP_STORE` from the same
+source tree without modifying direct-download builds.
+
+### How to build and test locally
+
+Compile and assemble the developer test build:
+
+```sh
+# Build the App Store release bundle (signed with Developer ID for testing on this Mac)
+scripts/make-appstore.sh --dev
+```
+
+Inspect entitlements:
+
+```sh
+codesign -d --entitlements - build/AppStore/Pulli.app
+```
+
+Verify that no un-entitled daemons or third-party dylibs are present:
+
+```sh
+find build/AppStore/Pulli.app -type f
+otool -L build/AppStore/Pulli.app/Contents/MacOS/Pulli
+```
+
+### What differs from the direct download build
+
+| Feature / Detail | Direct download | App Store edition (`PULLI_APP_STORE`) |
+|---|---|---|
+| **Bundle ID & Group** | `app.pulli.mac`, `8Q2D6948R4.app.pulli.mac` | `app.pulli.store`, `8Q2D6948R4.app.pulli.store` |
+| **Widget ID** | `app.pulli.mac.widget` | `app.pulli.store.widget` |
+| **File Provider ID** | `app.pulli.mac.fileprovider` | `app.pulli.store.fileprovider` |
+| **Phone Access** | libmtp/libusb worker processes | ImageCaptureCore (`ICCKit`) in-process |
+| **Engine Host** | Background LaunchAgent helper or embedded | In-process embedded engine (`EmbeddedEngine`) |
+| **Dylibs & Daemons** | Bundles libmtp, libusb, Sparkle, worker, helper | Zero third-party dylibs, worker and helper omitted |
+| **Phone Mode Guidance** | Prompts for "File transfer" | Prompts for "Transferring images" (PTP) |
+| **Default Destination** | `~/Downloads/<phone name>` | `~/Downloads/Pulli` (sandboxed Downloads entitlement) |
+| **Custom Destination** | Plain filesystem path | Security-scoped bookmark accessed during copies and Finder reveal |
+| **Duplicate Detection** | Reads destination and `~/Pictures` | Reads destination (bookmark) and `~/Pictures` (entitled) |
+| **Updates** | Sparkle framework and in-app update checks | Managed by the Mac App Store; Sparkle stripped |
+| **Omitted Features** | Full filesystem access | No Mac-to-phone copying (drag/paste/Add), no phone deletion / Free Up Space, no storage map, no legacy migration |
+| **Privacy Manifest** | None | `PrivacyInfo.xcprivacy` with reasons for UserDefaults, timestamps, and disk space |
+
+### Owner's checklist for Stage 3 (App Store Connect submission)
+
+1. **Certificates in Keychain (macOS):**
+   - Create an **Apple Distribution** certificate on developer.apple.com and install it in Keychain.
+   - Create a **Mac Installer Distribution** (or 3rd Party Mac Developer Installer) certificate and install it in Keychain.
+2. **Identifiers on developer.apple.com:**
+   - Create App Group: `8Q2D6948R4.app.pulli.store`.
+   - Create App ID: `app.pulli.store` (enable App Groups).
+   - Create App ID: `app.pulli.store.widget` (enable App Groups).
+   - Create App ID: `app.pulli.store.fileprovider` (enable App Groups).
+   - Assign `8Q2D6948R4.app.pulli.store` to all three App IDs.
+3. **Provisioning Profiles:**
+   - Generate three Mac App Store provisioning profiles and place them in `Config/AppStore/profiles/`:
+     - `Config/AppStore/profiles/app.pulli.store.provisionprofile`
+     - `Config/AppStore/profiles/app.pulli.store.widget.provisionprofile`
+     - `Config/AppStore/profiles/app.pulli.store.fileprovider.provisionprofile`
+4. **App Store Connect App Record:**
+   - Create an app record in App Store Connect with bundle identifier `app.pulli.store`.
+5. **Package and Upload:**
+   - Run:
+     ```sh
+     scripts/make-appstore.sh --store
+     ```
+     This produces `build/AppStore/Pulli.pkg`.
+   - Upload using Transporter or CLI:
+     ```sh
+     xcrun altool --upload-package build/AppStore/Pulli.pkg --type osx --apiKey <API_KEY> --apiIssuer <ISSUER_ID>
+     ```

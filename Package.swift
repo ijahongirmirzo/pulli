@@ -12,10 +12,25 @@ let linkVendoredLibs: [LinkerSetting] = [
     .unsafeFlags(["-L", vendorLib, "-Xlinker", "-rpath", "-Xlinker", vendorLib]),
 ]
 
-let strictSwift: [SwiftSetting] = [
+let isAppStore = ProcessInfo.processInfo.environment["PULLI_APP_STORE"] != nil
+
+var strictSwift: [SwiftSetting] = [
     .enableUpcomingFeature("ExistentialAny"),
     .enableUpcomingFeature("InternalImportsByDefault"),
 ]
+if isAppStore {
+    strictSwift.append(.define("PULLI_APP_STORE"))
+}
+
+var pulliDependencies: [Target.Dependency] = [
+    "PulliClient", "PulliProtocol", "PulliHost", "WorkerIPC", "PulliWidgetViews",
+    .product(name: "FinderLocations", package: "FinderLocations"),
+    .product(name: "RemoteFiles", package: "FinderLocations"),
+    "TransferCore",
+]
+if !isAppStore {
+    pulliDependencies.append(.product(name: "Sparkle", package: "Sparkle"))
+}
 
 let package = Package(
     name: "Pulli",
@@ -118,13 +133,7 @@ let package = Package(
         // in-process engine when the background helper is not running (docs/DECISIONS.md, D-021).
         .executableTarget(
             name: "Pulli",
-            dependencies: [
-                "PulliClient", "PulliProtocol", "PulliHost", "WorkerIPC", "PulliWidgetViews",
-                .product(name: "FinderLocations", package: "FinderLocations"),
-                .product(name: "RemoteFiles", package: "FinderLocations"),
-                "TransferCore",
-                .product(name: "Sparkle", package: "Sparkle"),
-            ],
+            dependencies: pulliDependencies,
             resources: [.copy("Resources/Fonts"), .copy("Resources/Sounds")],
             swiftSettings: strictSwift
         ),
@@ -151,6 +160,7 @@ let package = Package(
         .executableTarget(
             name: "PulliFileProvider",
             dependencies: [
+                "PulliProtocol",
                 .product(name: "RemoteFiles", package: "FinderLocations"),
                 .product(name: "RemoteFilesProvider", package: "FinderLocations"),
             ],

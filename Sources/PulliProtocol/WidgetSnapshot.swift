@@ -80,12 +80,16 @@ public struct WidgetSnapshot: Codable, Sendable, Hashable {
         self.lastCopy = lastCopy
     }
 
-    public static let widgetBundleID = "app.pulli.mac.widget"
+    public static let widgetBundleID = Edition.widgetBundleID
 
-    /// The file inside the widget's sandbox container (what the widget sees as its own
-    /// Application Support folder).
+    /// The file inside the widget's sandbox container or shared app group container.
     public static var containerFile: URL {
-        FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent("Library/Containers/\(widgetBundleID)/Data/Library/Application Support/pulli-widget.json")
+#if PULLI_APP_STORE
+        if let group = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: Edition.appGroup) {
+            return group.appendingPathComponent("Library/Application Support/pulli-widget.json")
+        }
+#endif
+        return FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent("Library/Containers/\(Edition.widgetBundleID)/Data/Library/Application Support/pulli-widget.json")
     }
 }

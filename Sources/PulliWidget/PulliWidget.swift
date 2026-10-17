@@ -38,7 +38,11 @@ struct Provider: TimelineProvider {
     }
 
     static func read() -> WidgetSnapshot? {
+#if PULLI_APP_STORE
+        let file = WidgetSnapshot.containerFile
+#else
         let file = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0].appendingPathComponent("pulli-widget.json")
+#endif
         guard let data = try? Data(contentsOf: file) else { return nil }
         return try? JSONDecoder().decode(WidgetSnapshot.self, from: data)
     }

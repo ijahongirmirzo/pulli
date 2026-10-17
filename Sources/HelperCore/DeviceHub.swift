@@ -270,7 +270,11 @@ public actor DeviceHub: DeviceConnector {
             entry.nextAttempt = .now + .seconds(min(30, 1 << min(entry.failures, 5)))
             switch error {
             case .noMTPInterface: entry.state = .notInFileTransferMode
+#if PULLI_APP_STORE
+            case .noStorage: entry.state = .notInFileTransferMode
+#else
             case .noStorage: entry.state = .locked
+#endif
             // One of Pulli's own workers holds the phone: wait for this engine's to let go, stop a
             // leftover, or say which other copy of Pulli has it.
             case .contended(holder: .process(let pid, let name)) where OwnWorkers.isOwnWorker(name):

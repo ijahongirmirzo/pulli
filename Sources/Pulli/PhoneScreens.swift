@@ -93,11 +93,13 @@ struct OverviewView: View {
                             .padding(.top, 18)
                         cards(summary)
                             .padding(.horizontal, 32).padding(.top, 26)
+#if !PULLI_APP_STORE
                         if !summary.apps.isEmpty {
                             appCards(summary.apps)
                                 .padding(.horizontal, 32).padding(.top, 18)
                                 .transition(.move(edge: .bottom).combined(with: .opacity))
                         }
+#endif
                     }
                     .padding(.bottom, 16)
                 }
@@ -182,6 +184,7 @@ struct OverviewView: View {
             GeometryReader { proxy in
                 let first = (proxy.size.width - 16) / 2.25
                 HStack(spacing: 16) {
+#if !PULLI_APP_STORE
                     if let downloads = summary.downloads {
                         PickCard(pick: .downloads, title: "Downloads", big: Format.count(downloads.files.count, "file"),
                                  small: Format.bytes(downloads.bytes) + (downloads.folderCount > 0 ? " · \(Format.count(downloads.folderCount, "folder")) not counted" : ""),
@@ -190,6 +193,11 @@ struct OverviewView: View {
                     } else if !browseOnTop {
                         BrowseCard().frame(width: first)
                     }
+#else
+                    if !browseOnTop {
+                        BrowseCard().frame(width: first)
+                    }
+#endif
                     CableCard(device: device)
                 }
             }

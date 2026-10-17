@@ -16,7 +16,11 @@ public enum WaitReason: Sendable, Equatable, CustomStringConvertible {
         switch self {
         case .disconnected: "Phone disconnected. Reconnect it to continue."
         case .locked: "Unlock your phone and allow access to continue."
+#if PULLI_APP_STORE
+        case .notInFileTransferMode: "Unlock your phone, then choose USB mode \"Transferring images\" (also called PTP)."
+#else
         case .notInFileTransferMode: "On your phone, choose USB mode \"File transfer\"."
+#endif
         case .heldBy(let holder): "\(holder.name) is using the phone. Quit it to continue."
         case .destination(let error): "Destination problem: \(error). Fix it to continue."
         case .retrying(let delay, let reason): "\(reason). Retrying in \(delay.formatted(.units(allowed: [.seconds], width: .abbreviated)))."
@@ -185,7 +189,11 @@ public struct TransferSupervisor: Sendable {
 
     static func reason(for error: any Error) -> WaitReason {
         switch error as? DeviceError {
+#if PULLI_APP_STORE
+        case .noStorage?: .notInFileTransferMode
+#else
         case .noStorage?: .locked
+#endif
         case .noMTPInterface?: .notInFileTransferMode
         case .contended(let holder)?: .heldBy(holder)
         case .transient(let detail)?: .retrying(after: .seconds(1), reason: detail)

@@ -195,7 +195,11 @@ struct PausedView: View {
         case .byUser: "Paused"
         case .phoneDisconnected: "Reconnect \(phone) to continue"
         case .phoneLocked: "Unlock \(phone) to continue"
+#if PULLI_APP_STORE
+        case .notInFileTransferMode: "Choose \u{201C}Transferring images\u{201D} on \(phone)"
+#else
         case .notInFileTransferMode: "Choose \u{201C}File transfer\u{201D} on \(phone)"
+#endif
         case .heldBy(let app): "\(app) is using \(phone)"
         case .destinationFull: "Your Mac needs more space"
         case .destinationUnavailable: "The destination is not available"
@@ -210,7 +214,11 @@ struct PausedView: View {
         case .byUser: "Nothing is lost. Resume whenever you like; Pulli carries on from where it stopped."
         case .phoneDisconnected: "The phone was unplugged. Everything copied so far is safe on your Mac. Plug it back in, into any port, and Pulli carries on by itself."
         case .phoneLocked: "The phone locked before Pulli could open it. Unlock it and the copy continues."
+#if PULLI_APP_STORE
+        case .notInFileTransferMode: "The phone switched to charging only. Swipe down, tap the USB notification and choose Transferring images (also called PTP)."
+#else
         case .notInFileTransferMode: "The phone switched to charging only. Swipe down, tap the USB notification and choose File transfer."
+#endif
         case .heldBy(let app): "Quit \(app) and the copy continues straight away."
         case .destinationFull: "The destination disk is full. Free up some space and Pulli continues by itself."
         case .destinationUnavailable(let detail): "Pulli cannot write to \(Format.place(batch.destinationPath)): \(detail). Reconnect the disk or choose another place."
@@ -274,6 +282,7 @@ struct DoneView: View {
                     }
                 }
                 Text(stats).font(.pulli(13)).foregroundStyle(tone.t3).monospacedDigit()
+#if !PULLI_APP_STORE
                 if completed, batch.filesDone > 0, model.state.devices[batch.deviceID] != nil {
                     // Free up space: offered only after a finished copy, with the phone connected.
                     HStack(spacing: 14) {
@@ -288,6 +297,7 @@ struct DoneView: View {
                     .padding(.horizontal, 14).padding(.vertical, 12)
                     .panel(radius: 16, tint: Color(hex: 0xB17BFF, opacity: 0.18))
                 }
+#endif
             }
             .padding(.leading, 380).padding(.trailing, 40).padding(.top, 92)
         }

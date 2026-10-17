@@ -38,6 +38,7 @@ struct PhoneStatusIntent: AppIntent {
     }
 }
 
+#if !PULLI_APP_STORE
 struct OpenStorageMapIntent: AppIntent {
     static let title: LocalizedStringResource = "Show Phone Storage Map"
     static let description = IntentDescription("Opens Pulli's map of what fills the connected phone.")
@@ -49,6 +50,7 @@ struct OpenStorageMapIntent: AppIntent {
         return .result()
     }
 }
+#endif
 
 enum PulliIntentError: Error, CustomLocalizedStringResourceConvertible {
     case notRunning
@@ -70,8 +72,10 @@ struct PulliShortcuts: AppShortcutsProvider {
                     shortTitle: "Copy New Photos", systemImageName: "arrow.down.to.line.circle")
         AppShortcut(intent: PhoneStatusIntent(), phrases: ["Phone status in \(.applicationName)"],
                     shortTitle: "Phone Status", systemImageName: "iphone.gen3")
+#if !PULLI_APP_STORE
         AppShortcut(intent: OpenStorageMapIntent(), phrases: ["Show phone storage in \(.applicationName)"],
                     shortTitle: "Storage Map", systemImageName: "square.grid.3x3.square")
+#endif
     }
 }
 
@@ -116,8 +120,10 @@ extension AppModel {
         switch url.host {
         case "copy-new": Task { _ = try? await copyNewForShortcut() }
         case "storage-map":
+#if !PULLI_APP_STORE
             show(.phone)
             if device?.state == .ready { openStorageMap() }
+#endif
         case "open":
             NSApp.activate(ignoringOtherApps: true)
         default: break

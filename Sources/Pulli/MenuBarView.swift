@@ -50,10 +50,12 @@ struct MenuBarView: View {
                     open(nil)
                 }
                 MenuRow(symbol: "externaldrive", title: "Open in Finder", enabled: ready) { model.openInFinder() }
+#if !PULLI_APP_STORE
                 MenuRow(symbol: "square.grid.3x3.square", title: "Storage Map", enabled: ready) {
                     model.openStorageMap()
                     open(nil)
                 }
+#endif
                 MenuRow(symbol: "clock", title: "History") { open(.history) }
             }
             .padding(.vertical, 5)
@@ -108,9 +110,11 @@ struct MenuBarView: View {
             Menu {
                 Button("Open Pulli") { open(nil) }
                 Divider()
+#if !PULLI_APP_STORE
                 if AppDelegate.updaterController != nil {
                     Button("Check for Updates…") { AppDelegate.updaterController?.checkForUpdates(nil) }
                 }
+#endif
                 Button("Settings…") { StatusMenu.openSettings() }
                 Button("Activity Log") { StatusMenu.openActivityLog() }
                 if Feedback.isAvailable {
@@ -150,7 +154,11 @@ struct MenuBarView: View {
             let speed = device.cable.map { " · " + Format.speed($0.bytesPerSecond) } ?? ""
             return "Connected · \(Format.link(device.link))\(speed)"
         case .locked: return "Connected · unlock the phone"
+#if PULLI_APP_STORE
+        case .notInFileTransferMode: return "Connected · choose Transferring images"
+#else
         case .notInFileTransferMode: return "Connected · choose File transfer"
+#endif
         default: return "Connecting…"
         }
     }
@@ -186,9 +194,11 @@ enum StatusMenu {
         let menu = NSMenu()
         menu.addItem(ClosureMenuItem("Open Pulli") { AppDelegate.openMainWindow?() })
         menu.addItem(.separator())
+#if !PULLI_APP_STORE
         if let updater = AppDelegate.updaterController {
             menu.addItem(ClosureMenuItem("Check for Updates…") { updater.checkForUpdates(nil) })
         }
+#endif
         menu.addItem(ClosureMenuItem("Settings…") { openSettings() })
         menu.addItem(ClosureMenuItem("Activity Log") { openActivityLog() })
         if Feedback.isAvailable {

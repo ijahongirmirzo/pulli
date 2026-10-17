@@ -64,8 +64,10 @@ private struct GeneralSettings: View {
     @AppStorage("skipDuplicates") private var skipDuplicates = true
     @AppStorage("notifyCopies") private var notifyCopies = true
     @AppStorage("autoCopyNew") private var autoCopyNew = false
+#if !PULLI_APP_STORE
     @State private var backgroundHelper = HelperRegistration.isEnabled
     @State private var helperNote: String?
+#endif
     @State private var openAtLogin = LoginItem.isEnabled
     @State private var loginNote: String?
     @AppStorage("openOnConnect") private var openOnConnect = true
@@ -76,7 +78,11 @@ private struct GeneralSettings: View {
             Group_ {
                 Row(title: "Copy to", detail: "Where new copies go unless you choose another folder.", divider: false) {
                     Button { chooseDefault() } label: {
+#if PULLI_APP_STORE
+                        Label(model.state.settings.defaultDestination.map(Format.place) ?? "Downloads › Pulli", systemImage: "folder")
+#else
                         Label(model.state.settings.defaultDestination.map(Format.place) ?? "Downloads › phone name", systemImage: "folder")
+#endif
                     }
                     .buttonStyle(PillButtonStyle(small: true))
                 }
@@ -101,10 +107,12 @@ private struct GeneralSettings: View {
                 }
             }
             Group_ {
+#if !PULLI_APP_STORE
                 Row(title: "Keep copying when Pulli is closed", detail: helperNote ?? model.helperProblem ?? "A background helper keeps copies going after you quit, and after a restart.", divider: false) {
                     Toggle("", isOn: $backgroundHelper).labelsHidden().toggleStyle(.switch).tint(.accent)
                         .onChange(of: backgroundHelper) { _, on in setHelper(on) }
                 }
+#endif
                 Row(title: "Keep the Mac awake while copying", detail: "The display can still sleep.") {
                     Toggle("", isOn: settingBinding(\.keepMacAwake)).labelsHidden().toggleStyle(.switch).tint(.accent)
                 }
@@ -131,9 +139,11 @@ private struct GeneralSettings: View {
                 Row(title: "Suggest a faster cable", detail: "Tell me when a phone could copy faster with another cable or port.") {
                     Toggle("", isOn: $suggestCable).labelsHidden().toggleStyle(.switch).tint(.accent)
                 }
+#if !PULLI_APP_STORE
                 Row(title: "Check for updates automatically", detail: "Check for new versions quietly in the background.") {
                     Toggle("", isOn: updateCheckBinding).labelsHidden().toggleStyle(.switch).tint(.accent)
                 }
+#endif
             }
             Group_ {
                 Row(title: "Notify me about copies", detail: "When a copy finishes or needs you, while Pulli is in the background.", divider: false) {
@@ -146,6 +156,7 @@ private struct GeneralSettings: View {
         }
     }
 
+#if !PULLI_APP_STORE
     private var updateCheckBinding: Binding<Bool> {
         Binding(
             get: {
@@ -158,6 +169,7 @@ private struct GeneralSettings: View {
             }
         )
     }
+#endif
 
     private var organizeBinding: Binding<String> {
         Binding(get: { model.state.settings.organize ?? "" }, set: { value in
@@ -190,6 +202,9 @@ private struct GeneralSettings: View {
         panel.canCreateDirectories = true
         panel.prompt = "Choose"
         guard panel.runModal() == .OK, let url = panel.url else { return }
+#if PULLI_APP_STORE
+        SandboxBookmark.shared.saveBookmark(for: url)
+#endif
         var settings = model.state.settings
         settings.defaultDestination = url.path
         Task { await model.update(settings) }
@@ -213,6 +228,7 @@ private struct GeneralSettings: View {
         }
     }
 
+#if !PULLI_APP_STORE
     private func setHelper(_ on: Bool) {
         guard on != HelperRegistration.isEnabled else { return }
         do {
@@ -229,6 +245,7 @@ private struct GeneralSettings: View {
             backgroundHelper = HelperRegistration.isEnabled
         }
     }
+#endif
 }
 
 private struct SoundSettings: View {
@@ -308,6 +325,7 @@ private struct AdvancedSettings: View {
                     }
                 }
             }
+#if !PULLI_APP_STORE
             Group_ {
                 Row(title: "Free the phone from Image Capture automatically",
                     detail: "macOS's camera service grabs Android phones when plugged in. Pulli releases it while copying; iPhone and camera imports pause meanwhile.",
@@ -330,6 +348,7 @@ private struct AdvancedSettings: View {
                     })).labelsHidden().toggleStyle(.switch).tint(.accent)
                 }
             }
+#endif
             Group_ {
                 Row(title: "Activity log", detail: "Recent events, for troubleshooting.", divider: false) {
                     Button("Open Log") { openWindow(id: "activity") }.buttonStyle(PillButtonStyle(small: true))

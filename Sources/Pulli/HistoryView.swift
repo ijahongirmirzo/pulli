@@ -95,9 +95,11 @@ private struct HistoryRow: View {
         .overlay(alignment: .top) { if !first { Rectangle().fill(tone.separator).frame(height: 1) } }
         .contextMenu {
             Button("Show in Finder") { model.showInFinder(batch.destinationPath) }
+#if !PULLI_APP_STORE
             if batch.phase == .completed, model.state.devices[batch.deviceID] != nil {
                 Button("Free Up Space on Phone…") { model.startFreeUp(batch) }
             }
+#endif
             if batch.phase == .completed || batch.phase == .cancelled {
                 Button("Remove from History") { Task { await model.control(batch.id, .remove) } }
             }

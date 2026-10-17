@@ -112,6 +112,10 @@ extension AppModel {
         guard let client, !paths.isEmpty else { return [] }
         let pictures = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Pictures").path
         let folders = Array(Set([destination, pictures]))
+#if PULLI_APP_STORE
+        SandboxBookmark.shared.startAccessing(path: destination)
+        defer { SandboxBookmark.shared.stopAccessing(path: destination) }
+#endif
         guard case .duplicates(let matches)? = try? await client.send(
             .findDuplicates(deviceID: deviceID, storageID: storageID, paths: paths, macFolders: folders), timeout: .seconds(600)) else { return [] }
         return matches
@@ -119,6 +123,7 @@ extension AppModel {
 
     // MARK: Storage map
 
+#if !PULLI_APP_STORE
     func openStorageMap() {
         navTransition = .forward
         withAnimation(.pulliNavigation) { showingStorageMap = true }
@@ -138,6 +143,7 @@ extension AppModel {
         storageScan = nil
         Task { _ = try? await client.send(.scanStorage(deviceID: device.id, storageID: storage.id, scanID: id)) }
     }
+#endif
 
     // MARK: Quick Look
 
@@ -188,9 +194,13 @@ extension AppModel {
         panel.canCreateDirectories = true
         panel.prompt = "Copy Here"
         guard panel.runModal() == .OK, let folder = panel.url else { return }
+#if PULLI_APP_STORE
+        SandboxBookmark.shared.saveBookmark(for: folder)
+#endif
         Task { await copy(paths: paths, destination: folder.path) }
     }
 
+#if !PULLI_APP_STORE
     // MARK: Mac to phone
 
     func upload(_ urls: [URL], to folder: String) {
@@ -218,10 +228,12 @@ extension AppModel {
         panel.message = "Choose files or folders to copy to \((folder as NSString).lastPathComponent) on \(device?.name ?? "the phone")"
         if panel.runModal() == .OK { upload(panel.urls, to: folder) }
     }
+#endif
 
     // MARK: Free up space
 
     func startFreeUp(_ batch: BatchSnapshot) {
+#if !PULLI_APP_STORE
         guard let client else { return }
         let id = UUID()
         navTransition = .forward
@@ -237,11 +249,13 @@ extension AppModel {
                 freeUp?.stage = .failed(Self.describe(error))
             }
         }
+#endif
     }
 
     /// Deletes the originals the check found identical. Only reachable from the confirmation,
     /// after the user ticked "I understand".
     func confirmFreeUp() {
+#if !PULLI_APP_STORE
         guard let client, let current = freeUp, case .confirm = current.stage else { return }
         freeUp?.stage = .deleting
         Task {
@@ -256,6 +270,7 @@ extension AppModel {
                 freeUp?.stage = .failed(Self.describe(error))
             }
         }
+#endif
     }
 
     func closeFreeUp() {

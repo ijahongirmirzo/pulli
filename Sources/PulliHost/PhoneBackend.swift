@@ -14,14 +14,22 @@ public enum PhoneBackend: String, Sendable {
     public static let environmentVariable = "PULLI_PHONE_BACKEND"
 
     public static func fromEnvironment(_ environment: [String: String] = ProcessInfo.processInfo.environment) -> PhoneBackend {
+#if PULLI_APP_STORE
+        .icc
+#else
         environment[environmentVariable].flatMap { PhoneBackend(rawValue: $0.lowercased()) } ?? .libmtp
+#endif
     }
 
     /// The connector and watcher for the engine. `workerURL` is the `pulli-mtp-worker` used by libmtp.
     public func devices(workerURL: URL) -> (connector: any DeviceConnector, watcher: any DeviceWatcher) {
+#if PULLI_APP_STORE
+        (ICCDeviceConnector(), ICCDeviceWatcher())
+#else
         switch self {
         case .libmtp: (WorkerConnector(executable: workerURL), USBPhoneWatcher())
         case .icc: (ICCDeviceConnector(), ICCDeviceWatcher())
         }
+#endif
     }
 }

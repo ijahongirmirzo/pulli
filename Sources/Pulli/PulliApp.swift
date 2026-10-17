@@ -1,6 +1,8 @@
 import AppKit
 import PulliProtocol
+#if !PULLI_APP_STORE
 import Sparkle
+#endif
 import SwiftUI
 
 //   Pulli                      real phones (engine in the app, or the background helper)
@@ -57,9 +59,9 @@ enum Entry {
 
 struct PulliApp: App {
     /// The app's bundle identifier.
-    static let bundleID = "app.pulli.mac"
+    static let bundleID = Edition.bundleID
     /// The shared App Group for Finder Location settings.
-    static let appGroup = "8Q2D6948R4.app.pulli.mac"
+    static let appGroup = Edition.appGroup
 
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var delegate
     @State private var model: AppModel
@@ -91,9 +93,11 @@ struct PulliApp: App {
                     NSApp.orderFrontStandardAboutPanel(options: options)
                 }
             }
+#if !PULLI_APP_STORE
             CommandGroup(after: .appInfo) {
                 CheckForUpdatesCommand()
             }
+#endif
             CommandGroup(after: .windowArrangement) {
                 OpenActivityCommand()
             }
@@ -164,6 +168,7 @@ enum AboutCredits {
     }
 }
 
+#if !PULLI_APP_STORE
 private struct CheckForUpdatesCommand: View {
     var body: some View {
         if let controller = Updates.shared.controller {
@@ -171,6 +176,7 @@ private struct CheckForUpdatesCommand: View {
         }
     }
 }
+#endif
 
 /// Menu commands get no environment from the window, so the model comes from the app delegate.
 private struct FeedbackCommand: View {
@@ -223,10 +229,11 @@ struct RootView: View {
     }
 }
 
-final class AppDelegate: NSObject, NSApplicationDelegate, SPUUpdaterDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate {
     @MainActor static var model: AppModel?
     /// Opens (or brings back) the main window from outside it (a phone arriving in the background).
     @MainActor static var openMainWindow: (() -> Void)?
+#if !PULLI_APP_STORE
     @MainActor static var updaterController: SPUStandardUpdaterController? {
         get { Updates.shared.controller }
         set { Updates.shared.controller = newValue }
@@ -246,6 +253,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, SPUUpdaterDelegate {
         guard let feed = Bundle.main.object(forInfoDictionaryKey: "SUFeedURL") as? String, !feed.isEmpty else { return false }
         return true
     }
+#endif
 
     func applicationWillFinishLaunching(_ notification: Notification) {
         MainActor.assumeIsolated { LoginItem.readLaunchEvent() }
@@ -254,17 +262,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate, SPUUpdaterDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         // The engine starts with the app, not with the window (which a login launch never shows).
         MainActor.assumeIsolated {
+#if !PULLI_APP_STORE
             LegacyMigration.run()
             InstallLocation.cleanUpOldRelayAppIfNeeded()
+#endif
             LoginItem.reregisterIfMoved()
             StatusMenu.install()
             Self.hideDockIconWhenWindowsClose()
+#if !PULLI_APP_STORE
             if Self.model?.mock == false { WidgetFeed.restartIfStale() }
             if Self.shouldEnableUpdater {
                 let controller = SPUStandardUpdaterController(startingUpdater: true, updaterDelegate: self, userDriverDelegate: nil)
                 self.updaterController = controller
                 Self.updaterController = controller
             }
+#endif
             guard let model = Self.model else { return }
             Task {
                 // Finder locations left by a crash or a forced quit (phones that may be gone):
@@ -331,8 +343,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, SPUUpdaterDelegate {
         return .terminateLater
     }
 
-    // MARK: - SPUUpdaterDelegate
+}
 
+#if !PULLI_APP_STORE
+// MARK: - SPUUpdaterDelegate
+
+extension AppDelegate: SPUUpdaterDelegate {
     func updater(_ updater: SPUUpdater, willInstallUpdate item: SUAppcastItem) {
         Task { @MainActor in
             await Self.model?.prepareForUpdate()
@@ -353,3 +369,4 @@ final class AppDelegate: NSObject, NSApplicationDelegate, SPUUpdaterDelegate {
         }
     }
 }
+#endif
