@@ -187,7 +187,7 @@ otool -L build/AppStore/Pulli.app/Contents/MacOS/Pulli
      - `Config/AppStore/profiles/app.pulli.store.widget.provisionprofile`
      - `Config/AppStore/profiles/app.pulli.store.fileprovider.provisionprofile`
 4. **App Store Connect App Record** (only possible on the website):
-   - App Store Connect › Apps › + › New App: platform macOS, name "Pulli — Phone Photos to
+   - App Store Connect › Apps › + › New App: platform macOS, name "Pulli - Phone Photos to
      Mac", bundle ID `app.pulli.store`, SKU `pulli-store`. The listing text, privacy answers and
      screenshots are ready in docs/APP_STORE_LISTING.md (on main) and
      docs/appstore-screenshots/.
