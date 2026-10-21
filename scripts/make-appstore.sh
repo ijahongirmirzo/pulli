@@ -258,11 +258,21 @@ elif [[ "$mode" == "store" ]]; then
     cp "$provider_profile" "$provider/Contents/embedded.provisionprofile"
     cp "$app_profile" "$app/Contents/embedded.provisionprofile"
 
+    # The App Store wants the App ID and team in each signature, as Xcode adds them.
+    store_entitlements() {
+        local out="build/AppStore/$2.entitlements"
+        cp "$1" "$out"
+        /usr/libexec/PlistBuddy -c "Add :com.apple.application-identifier string $team_id.$2" \
+            -c "Add :com.apple.developer.team-identifier string $team_id" "$out" >/dev/null
+        echo "$out"
+    }
+    team_id="${group%%.*}"
+
     echo "› signing with Apple Distribution ($dist_identity)"
     sign=(codesign --force --sign "$dist_identity" --timestamp)
-    "${sign[@]}" --entitlements "$widget_entitlements" "$widget"
-    "${sign[@]}" --entitlements "$provider_entitlements" "$provider"
-    "${sign[@]}" --entitlements "$app_entitlements" "$app"
+    "${sign[@]}" --entitlements "$(store_entitlements "$widget_entitlements" "$widget_id")" "$widget"
+    "${sign[@]}" --entitlements "$(store_entitlements "$provider_entitlements" "$provider_id")" "$provider"
+    "${sign[@]}" --entitlements "$(store_entitlements "$app_entitlements" "$app_id")" "$app"
     codesign --verify --deep --strict "$app"
 
     pkg="build/AppStore/Pulli.pkg"
