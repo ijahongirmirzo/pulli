@@ -516,7 +516,7 @@ struct BusyView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .panel(radius: 26)
         .padding(.horizontal, 40).padding(.top, 24).padding(.bottom, 40)
-        .onReceive(NotificationCenter.default.publisher(for: NSWorkspace.didTerminateApplicationNotification)) { notification in
+        .onReceive(NSWorkspace.shared.notificationCenter.publisher(for: NSWorkspace.didTerminateApplicationNotification)) { notification in
             if let running = runningClient,
                let terminated = notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication,
                terminated.bundleIdentifier?.caseInsensitiveCompare(running.app.bundleID) == .orderedSame {
