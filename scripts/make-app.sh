@@ -151,7 +151,7 @@ $updates_plist
         <key>CFBundleURLName</key><string>app.pulli.mac</string>
         <key>CFBundleURLSchemes</key><array><string>pulli</string><string>relay</string></array>
     </dict></array>
-    <key>NSHumanReadableCopyright</key><string>Pulli. Plus Jakarta Sans © The Plus Jakarta Sans Project Authors (SIL OFL).</string>
+    <key>NSHumanReadableCopyright</key><string>© 2026 Jahongirmirzo. Free software under the GNU GPL v3.</string>
 </dict>
 </plist>
 PLIST

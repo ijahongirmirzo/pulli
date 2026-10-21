@@ -209,11 +209,10 @@ activity log (Window › Activity Log). See [CONTRIBUTING.md](CONTRIBUTING.md).
 ## Licence
 
 Pulli is free software under the [GNU General Public License v3](LICENSE) or later, with an
-additional term that versions of Pulli keep the credit "Pulli, created by Jakhongirmirzo
-Ibrokhimov" (see [NOTICE](NOTICE)). The [FinderLocations](Packages/FinderLocations) package is
+additional term that versions of Pulli keep the credit "Pulli, created by Jahongirmirzo" (see [NOTICE](NOTICE)). The [FinderLocations](Packages/FinderLocations) package is
 under the Apache License 2.0. Third-party code keeps its own licence:
 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
 The name Pulli and its logo are not covered by the licence.
 
-Created by Jakhongirmirzo Ibrokhimov.
+Created by Jahongirmirzo.

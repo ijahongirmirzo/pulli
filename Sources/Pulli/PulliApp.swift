@@ -4,6 +4,7 @@ import PulliProtocol
 import Sparkle
 #endif
 import SwiftUI
+import UserNotifications
 
 //   Pulli                      real phones (engine in the app, or the background helper)
 //   Pulli --mock               a simulated phone
@@ -83,6 +84,7 @@ struct PulliApp: App {
         .defaultSize(width: 1240, height: 760)
         .windowResizability(.contentMinSize)
         .commands {
+<<<<<<< HEAD
             CommandGroup(replacing: .appInfo) {
                 Button("About Pulli") {
                     var options: [NSApplication.AboutPanelOptionKey: Any] = [:]
@@ -108,6 +110,9 @@ struct PulliApp: App {
             CommandGroup(replacing: .help) {
                 FeedbackCommand()
             }
+=======
+            PulliCommands()
+>>>>>>> main
         }
 
         Window("Activity", id: "activity") {
@@ -128,22 +133,6 @@ struct PulliApp: App {
     }
 }
 
-/// View › Hide Sidebar / Show Sidebar (⌃⌘S), as in Finder.
-private struct SidebarCommand: View {
-    @AppStorage("sidebarCollapsed") private var collapsed = false
-    var body: some View {
-        Button(collapsed ? "Show Sidebar" : "Hide Sidebar") { collapsed.toggle() }
-            .keyboardShortcut("s", modifiers: [.command, .control])
-    }
-}
-
-private struct OpenActivityCommand: View {
-    @Environment(\.openWindow) private var openWindow
-    var body: some View {
-        Button("Activity Log") { openWindow(id: "activity") }.keyboardShortcut("l", modifiers: [.command, .option])
-    }
-}
-
 /// Shown once the updater exists (it starts after launch; `Updates` is observed, so the menu
 /// catches up). Builds without a Sparkle key have no updater and no menu item.
 /// The About window's legal notices (GPL v3 section 5(d)) and the author credit that section
@@ -151,8 +140,8 @@ private struct OpenActivityCommand: View {
 enum AboutCredits {
     static var text: NSAttributedString {
         let body = """
-        Pulli, created by Jakhongirmirzo Ibrokhimov.
-        Copyright © 2026 Jakhongirmirzo Ibrokhimov.
+        Pulli, created by Jahongirmirzo.
+        Copyright © 2026 Jahongirmirzo.
 
         Free software under the GNU General Public License version 3 or later, with no warranty. \
         The licence and the licences of the libraries Pulli uses are in Pulli.app › Contents › \
@@ -168,6 +157,7 @@ enum AboutCredits {
     }
 }
 
+<<<<<<< HEAD
 #if !PULLI_APP_STORE
 private struct CheckForUpdatesCommand: View {
     var body: some View {
@@ -187,6 +177,8 @@ private struct FeedbackCommand: View {
     }
 }
 
+=======
+>>>>>>> main
 struct RootView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.openWindow) private var openWindow
@@ -241,6 +233,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     @MainActor static let postponer = RelaunchPostponer()
 
     private var updaterController: SPUStandardUpdaterController?
+    private var userDriverDelegate: UpdateDriverDelegate?
 
     static var shouldEnableUpdater: Bool {
         if ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] == "1" { return false }
@@ -268,11 +261,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 #endif
             LoginItem.reregisterIfMoved()
             StatusMenu.install()
+            UNUserNotificationCenter.current().delegate = self
             Self.hideDockIconWhenWindowsClose()
 #if !PULLI_APP_STORE
             if Self.model?.mock == false { WidgetFeed.restartIfStale() }
             if Self.shouldEnableUpdater {
-                let controller = SPUStandardUpdaterController(startingUpdater: true, updaterDelegate: self, userDriverDelegate: nil)
+                let driverDelegate = UpdateDriverDelegate()
+                self.userDriverDelegate = driverDelegate
+                let controller = SPUStandardUpdaterController(startingUpdater: true, updaterDelegate: self, userDriverDelegate: driverDelegate)
                 self.updaterController = controller
                 Self.updaterController = controller
             }
@@ -369,4 +365,25 @@ extension AppDelegate: SPUUpdaterDelegate {
         }
     }
 }
+<<<<<<< HEAD
 #endif
+=======
+
+// MARK: - UNUserNotificationCenterDelegate
+
+extension AppDelegate: @MainActor UNUserNotificationCenterDelegate {
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        didReceive response: UNNotificationResponse,
+        withCompletionHandler completionHandler: @escaping () -> Void
+    ) {
+        if response.actionIdentifier == UNNotificationDefaultActionIdentifier {
+            let identifier = response.notification.request.identifier
+            if identifier.hasPrefix("update-") || response.notification.request.content.userInfo["action"] as? String == "installUpdate" {
+                Updates.shared.install()
+            }
+        }
+        completionHandler()
+    }
+}
+>>>>>>> main

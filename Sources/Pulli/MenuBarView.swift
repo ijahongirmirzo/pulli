@@ -59,6 +59,11 @@ struct MenuBarView: View {
                 MenuRow(symbol: "clock", title: "History") { open(.history) }
             }
             .padding(.vertical, 5)
+            if let version = Updates.shared.available {
+                separator
+                UpdateMenuRow(version: version) { Updates.shared.install() }
+                    .padding(.vertical, 4)
+            }
             separator
             HStack(spacing: 4) {
                 MenuRow(symbol: nil, title: "Open Pulli", bold: true) { open(nil) }
@@ -192,6 +197,10 @@ enum StatusMenu {
 
     private static func show(from button: NSView) {
         let menu = NSMenu()
+        if let version = Updates.shared.available {
+            menu.addItem(ClosureMenuItem("Install Update (\(version))…") { Updates.shared.install() })
+            menu.addItem(.separator())
+        }
         menu.addItem(ClosureMenuItem("Open Pulli") { AppDelegate.openMainWindow?() })
         menu.addItem(.separator())
 #if !PULLI_APP_STORE
@@ -264,6 +273,44 @@ private struct MenuRow: View {
         }
         .buttonStyle(.plain)
         .disabled(!enabled)
+        .onHover { hovering = $0 }
+        .padding(.horizontal, 5)
+    }
+}
+
+/// An update notice in BetterDisplay's style: filled orange circle with white arrow, two lines of text.
+private struct UpdateMenuRow: View {
+    var version: String
+    var action: () -> Void
+    @State private var hovering = false
+    @Environment(\.tone) private var tone
+
+    var body: some View {
+        let lit = hovering
+        let orange = Color(hex: tone.dark ? 0xF5A65B : 0xF0913A)
+        Button(action: action) {
+            HStack(spacing: 9) {
+                Image(systemName: "arrow.down.circle.fill")
+                    .symbolRenderingMode(.palette)
+                    .foregroundStyle(.white, orange)
+                    .font(.system(size: 19))
+                    .frame(width: 20)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text("Install Update…")
+                        .font(.system(size: 13, weight: .regular))
+                        .foregroundStyle(lit ? .white : tone.t1)
+                    Text("Pulli \(version) is available")
+                        .font(.system(size: 11, weight: .regular))
+                        .foregroundStyle(lit ? .white.opacity(0.8) : tone.t2)
+                }
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, 9)
+            .padding(.vertical, 4)
+            .background(RoundedRectangle(cornerRadius: 6, style: .continuous).fill(lit ? Color.accent : .clear))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
         .onHover { hovering = $0 }
         .padding(.horizontal, 5)
     }
@@ -361,7 +408,7 @@ private struct CopyRow: View {
 }
 
 /// The menu bar icon: Pulli's mark (a pulley "p" with a down arrow), plus the overall percentage
-/// while copying, and a pause in the wheel while paused.
+/// while copying, a pause in the wheel while paused, and a small badge dot when an update is waiting.
 struct MenuBarLabel: View {
     @Environment(AppModel.self) private var model
 
@@ -371,10 +418,16 @@ struct MenuBarLabel: View {
                 Image(nsImage: PulliGlyph.image(.copying))
                 Text("\(Int((batch.fractionDone * 100).rounded()))%").monospacedDigit()
             }
-        } else if model.activeBatch != nil {
-            Image(nsImage: PulliGlyph.image(.paused))
         } else {
-            Image(nsImage: PulliGlyph.image(.idle))
+            let glyph = model.activeBatch != nil ? PulliGlyph.image(.paused) : PulliGlyph.image(.idle)
+            if Updates.shared.available != nil {
+                HStack(spacing: 3) {
+                    Image(nsImage: glyph)
+                    Image(systemName: "circlebadge.fill").imageScale(.small)
+                }
+            } else {
+                Image(nsImage: glyph)
+            }
         }
     }
 }

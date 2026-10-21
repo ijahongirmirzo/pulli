@@ -209,14 +209,60 @@ struct BrowseView: View {
             withAnimation(.easeInOut(duration: 0.25)) { reorder() }
         }
         .background {
-            // Keyboard: Esc clears the ticks, Space previews the last clicked file, Return copies,
-            // ⌘1 and ⌘2 show icons or the list (as in Finder).
+            // Keyboard: Esc clears the ticks, Space previews the last clicked file.
+            // Return copies selected, ⌘1 and ⌘2 change layouts, and ⌘A selects all via the menu bar.
             Button("") { selection.removeAll() }.keyboardShortcut(.escape, modifiers: []).opacity(0)
             Button("") { previewAnchor() }.keyboardShortcut(.space, modifiers: []).opacity(0)
-            Button("") { copySelection() }.keyboardShortcut(.defaultAction).opacity(0).disabled(selection.isEmpty)
-            Button("") { setLayout(.icons) }.keyboardShortcut("1", modifiers: .command).opacity(0)
-            Button("") { setLayout(.list) }.keyboardShortcut("2", modifiers: .command).opacity(0)
         }
+        .focusedSceneValue(\.browseCommands, browseCommands)
+    }
+
+    private var browseCommands: BrowseCommands {
+        let selectionBinding = $selection
+        let currentVisible = visible
+        let currentOnMac = onMac
+        let currentFolder = path
+        let currentClipboardPaths = clipboardPaths(currentVisible)
+        let currentSelectionPaths = Array(selection.keys).sorted()
+        let fullPath: @Sendable (String) -> String = { name in currentFolder == "/" ? "/" + name : currentFolder + "/" + name }
+
+        return BrowseCommands(
+            hasSelection: !selection.isEmpty,
+            copySelected: {
+                guard !currentSelectionPaths.isEmpty else { return }
+                Task { await model.copy(paths: currentSelectionPaths) }
+            },
+            canCopy: !currentClipboardPaths.isEmpty,
+            copy: {
+                if !currentClipboardPaths.isEmpty { model.copyToClipboard(currentClipboardPaths) }
+            },
+            canPaste: model.clipboardHasSomethingForPhone,
+            paste: {
+                model.pasteFromClipboard(into: currentFolder)
+            },
+            canSelectAll: !currentVisible.isEmpty,
+            selectAll: {
+                for entry in currentVisible where currentOnMac[fullPath(entry.name)] == nil {
+                    selectionBinding.wrappedValue[fullPath(entry.name)] = entry
+                }
+            },
+            canDelete: false,
+            delete: {},
+            layout: options.layout,
+            setLayout: { layout in
+                guard model.browseOptions.layout != layout else { return }
+                withAnimation(.easeInOut(duration: 0.25)) { model.browseOptions.layout = layout }
+            },
+            sortKey: options.sort,
+            setSortKey: { key in
+                model.browseOptions.sort = key
+                model.browseOptions.ascending = key == .name || key == .kind
+            },
+            ascending: options.ascending,
+            setAscending: { asc in
+                model.browseOptions.ascending = asc
+            }
+        )
     }
 
     private func copySelection() {
@@ -480,7 +526,6 @@ struct BrowseView: View {
                 for entry in visible where onMac[full(entry.name)] == nil { selection[full(entry.name)] = entry }
             }
             .buttonStyle(PillButtonStyle(small: true))
-            .keyboardShortcut("a", modifiers: .command)
             if !selection.isEmpty {
                 Button("Clear") { selection.removeAll() }.buttonStyle(PillButtonStyle(small: true))
             }

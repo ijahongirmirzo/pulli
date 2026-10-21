@@ -256,7 +256,6 @@ private struct TitleBar: View {
                         Label(device.name, systemImage: "chevron.left").font(.pulli(13, .semibold))
                     }
                     .buttonStyle(.plain)
-                    .keyboardShortcut("[", modifiers: .command)
                     .padding(.leading, sidebarWidth + 24)
                 }
 #endif
@@ -265,7 +264,6 @@ private struct TitleBar: View {
                         Label(back, systemImage: "chevron.left").font(.pulli(13, .semibold))
                     }
                     .buttonStyle(.plain)
-                    .keyboardShortcut("[", modifiers: .command)
                     .padding(.leading, sidebarWidth + 24)
                 }
                 Spacer(minLength: 12)
@@ -428,6 +426,21 @@ struct FullSidebar: View {
             item(.history, "clock", "History")
             if model.attentionCount > 0 { item(.attention, "exclamationmark.triangle", "Attention") }
             Spacer()
+            if let version = Updates.shared.available {
+                let orange = Color(hex: tone.dark ? 0xF5A65B : 0xF0913A)
+                Button { Updates.shared.install() } label: {
+                    Text("Update to \(version)")
+                        .font(.pulli(12, .semibold))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 11)
+                        .padding(.vertical, 5)
+                        .background(Capsule().fill(orange))
+                }
+                .buttonStyle(.plain)
+                .padding(.horizontal, 16)
+                .help("Update to \(version)")
+                .accessibilityLabel("Update to \(version)")
+            }
             Button { openSettings() } label: {
                 Label { Text("Settings").font(.pulli(14.5, .medium)) } icon: { Image(systemName: "gearshape").font(.system(size: 18)) }
                     .padding(.horizontal, 16).frame(height: 50)
@@ -476,6 +489,7 @@ struct Rail: View {
     static let width: CGFloat = 88
     @Environment(AppModel.self) private var model
     @Environment(\.openSettings) private var openSettings
+    @Environment(\.tone) private var tone
 
     var body: some View {
         VStack(spacing: 14) {
@@ -484,6 +498,20 @@ struct Rail: View {
             tile(.history, "clock", "History")
             if model.attentionCount > 0 { tile(.attention, "exclamationmark.triangle", "Needs attention") }
             Spacer()
+            if let version = Updates.shared.available {
+                let orange = Color(hex: tone.dark ? 0xF5A65B : 0xF0913A)
+                Button { Updates.shared.install() } label: {
+                    Image(systemName: "arrow.down.circle.fill")
+                        .symbolRenderingMode(.palette)
+                        .foregroundStyle(.white, orange)
+                        .font(.system(size: 22))
+                        .frame(width: 44, height: 44)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .help("Update to \(version)")
+                .accessibilityLabel("Update to \(version)")
+            }
             Button { openSettings() } label: {
                 Image(systemName: "gearshape").font(.system(size: 20)).frame(width: 54, height: 54).contentShape(Rectangle())
             }

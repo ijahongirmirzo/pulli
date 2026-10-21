@@ -16,6 +16,7 @@ enum Snapshots {
         let scenarios: [(String, (AppModel) -> Void)] = [
             ("welcome", { $0.state.devices = [:]; $0.selectedDeviceID = nil }),
             ("overview", { _ in }),
+            ("overview-update", { _ in Updates.shared.available = "0.4.2" }),
             ("overview-connected-note", { $0.connectedNote = "myGalaxy connected · ready to copy" }),
             ("browse-connected-note", { $0.browsePath = "/DCIM/Camera"; $0.connectedNote = "myGalaxy connected · ready to copy" }),
             ("overview-banner", { $0.banner = "Could not open myGalaxy in Finder: the phone was disconnected." }),
@@ -51,10 +52,14 @@ enum Snapshots {
                 model.previewListings = ["/DCIM/Camera": cameraFiles]
                 configure(model)
                 write(MainWindow().environment(model), size: CGSize(width: 1120, height: 720), dark: dark, to: folder, name: name)
+                Updates.shared.available = nil
             }
             let model = AppModel(preview: state, summaries: [phone.id: summary])
             write(IntroView(still: true, finish: {}).environment(model), size: CGSize(width: 1120, height: 720), dark: dark, to: folder, name: "intro")
             write(MenuBarView().environment(model).modifier(ToneProvider()), size: CGSize(width: 356, height: 560), dark: dark, to: folder, name: "menubar")
+            Updates.shared.available = "0.4.2"
+            write(MenuBarView().environment(model).modifier(ToneProvider()), size: CGSize(width: 356, height: 560), dark: dark, to: folder, name: "menubar-update")
+            Updates.shared.available = nil
             for (index, scene) in [SettingsScene.sidebar, .general, .loginItems, .extensions, .providers(on: false), .providers(on: true)].enumerated() {
                 write(FinderLocationApprovalSheet(still: scene).modifier(ToneProvider()), size: CGSize(width: 760, height: 420), dark: dark, to: folder,
                       name: "finder-approval-\(index + 1)")
