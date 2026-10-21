@@ -236,9 +236,9 @@ struct BrowseView: View {
             copy: {
                 if !currentClipboardPaths.isEmpty { model.copyToClipboard(currentClipboardPaths) }
             },
-            canPaste: model.clipboardHasSomethingForPhone,
+            canPaste: canPasteToPhone,
             paste: {
-                model.pasteFromClipboard(into: currentFolder)
+                pasteToPhone(into: currentFolder)
             },
             canSelectAll: !currentVisible.isEmpty,
             selectAll: {
@@ -987,5 +987,23 @@ private struct DropFiles: ViewModifier {
         } else {
             content
         }
+    }
+}
+
+extension BrowseView {
+    /// ⌘V into the open phone folder. The App Store edition cannot copy to the phone
+    /// (ImageCaptureCore only reads), so there it is never offered.
+    var canPasteToPhone: Bool {
+#if PULLI_APP_STORE
+        false
+#else
+        model.clipboardHasSomethingForPhone
+#endif
+    }
+
+    func pasteToPhone(into folder: String) {
+#if !PULLI_APP_STORE
+        model.pasteFromClipboard(into: folder)
+#endif
     }
 }

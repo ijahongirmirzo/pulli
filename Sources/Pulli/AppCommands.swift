@@ -175,6 +175,7 @@ private struct FileCommandItems: View {
         .keyboardShortcut("b", modifiers: .command)
         .disabled(AppDelegate.model?.canBrowsePhone != true)
 
+#if !PULLI_APP_STORE
         Button("Storage Map") {
             if let model = AppDelegate.model {
                 if model.section != .phone { model.show(.phone) }
@@ -183,6 +184,7 @@ private struct FileCommandItems: View {
             }
         }
         .disabled(AppDelegate.model?.canOpenStorageMap != true)
+#endif
 
         Divider()
 
@@ -523,6 +525,8 @@ private func openAcknowledgements() {
 /// Check for updates or install a discovered update.
 struct CheckForUpdatesCommand: View {
     var body: some View {
+        // The App Store updates the App Store edition: no updater, no menu item.
+#if !PULLI_APP_STORE
         if let version = Updates.shared.available {
             Button("Install Update (\(version))…") {
                 Updates.shared.install()
@@ -533,5 +537,6 @@ struct CheckForUpdatesCommand: View {
             }
             .disabled(Updates.shared.controller == nil)
         }
+#endif
     }
 }

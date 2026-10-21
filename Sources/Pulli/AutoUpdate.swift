@@ -125,5 +125,16 @@ enum UpdateManager {
         SUStandardVersionComparator.default.compareVersion(a, toVersion: b)
     }
 }
-#endif
+#else
+import Observation
 
+/// The App Store updates the App Store edition: a stand-in that never reports an update, so the
+/// update notice in menus and the sidebar compiles and simply never appears.
+@MainActor
+@Observable
+final class Updates {
+    static let shared = Updates()
+    var available: String?
+    func install() {}
+}
+#endif

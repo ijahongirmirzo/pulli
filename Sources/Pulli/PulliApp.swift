@@ -84,35 +84,7 @@ struct PulliApp: App {
         .defaultSize(width: 1240, height: 760)
         .windowResizability(.contentMinSize)
         .commands {
-<<<<<<< HEAD
-            CommandGroup(replacing: .appInfo) {
-                Button("About Pulli") {
-                    var options: [NSApplication.AboutPanelOptionKey: Any] = [:]
-                    if let commit = PulliProtocolVersion.commit {
-                        options[NSApplication.AboutPanelOptionKey(rawValue: "ApplicationVersion")] = "\(PulliProtocolVersion.buildVersion) (\(commit))"
-                    }
-                    options[.credits] = AboutCredits.text
-                    NSApp.orderFrontStandardAboutPanel(options: options)
-                }
-            }
-#if !PULLI_APP_STORE
-            CommandGroup(after: .appInfo) {
-                CheckForUpdatesCommand()
-            }
-#endif
-            CommandGroup(after: .windowArrangement) {
-                OpenActivityCommand()
-            }
-            CommandGroup(after: .toolbar) {
-                SidebarCommand()
-            }
-            CommandGroup(replacing: .newItem) {}
-            CommandGroup(replacing: .help) {
-                FeedbackCommand()
-            }
-=======
             PulliCommands()
->>>>>>> main
         }
 
         Window("Activity", id: "activity") {
@@ -157,28 +129,6 @@ enum AboutCredits {
     }
 }
 
-<<<<<<< HEAD
-#if !PULLI_APP_STORE
-private struct CheckForUpdatesCommand: View {
-    var body: some View {
-        if let controller = Updates.shared.controller {
-            Button("Check for Updates…") { controller.checkForUpdates(nil) }
-        }
-    }
-}
-#endif
-
-/// Menu commands get no environment from the window, so the model comes from the app delegate.
-private struct FeedbackCommand: View {
-    var body: some View {
-        if Feedback.isAvailable {
-            Button("Send Feedback…") { Feedback.open(model: AppDelegate.model) }
-        }
-    }
-}
-
-=======
->>>>>>> main
 struct RootView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.openWindow) private var openWindow
@@ -365,9 +315,7 @@ extension AppDelegate: SPUUpdaterDelegate {
         }
     }
 }
-<<<<<<< HEAD
 #endif
-=======
 
 // MARK: - UNUserNotificationCenterDelegate
 
@@ -380,10 +328,11 @@ extension AppDelegate: @MainActor UNUserNotificationCenterDelegate {
         if response.actionIdentifier == UNNotificationDefaultActionIdentifier {
             let identifier = response.notification.request.identifier
             if identifier.hasPrefix("update-") || response.notification.request.content.userInfo["action"] as? String == "installUpdate" {
-                Updates.shared.install()
+#if !PULLI_APP_STORE
+                MainActor.assumeIsolated { Updates.shared.install() }
+#endif
             }
         }
         completionHandler()
     }
 }
->>>>>>> main

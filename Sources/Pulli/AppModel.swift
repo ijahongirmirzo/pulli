@@ -955,7 +955,9 @@ final class AppModel {
     /// Navigates back: closes the storage map or steps back to the parent folder / phone overview.
     func goBackNavigation() {
         switch route {
+#if !PULLI_APP_STORE
         case .storageMap: closeStorageMap()
+#endif
         case .browse: goBack()
         default: break
         }
