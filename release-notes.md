@@ -1,8 +1,8 @@
-A polish update: cleaner screens while you copy.
+Proper menus and a quieter way to learn about updates.
 
-- **Notes never cover the page.** "Phone connected" now appears briefly in the title bar, and warnings sit above the page instead of floating over it.
-- **A steadier copy screen.** The title and file list no longer jump as the numbers grow.
-- **Tidier cards.** Long card titles such as "New since last copy" wrap neatly instead of running under their icons.
+- **Menus that work.** File, Edit, View, Go, Window and Help now hold Pulli's own commands with their shortcuts: copy new photos, browse the phone, open it in Finder, switch views and sorting, jump to Camera or Screenshots, and more. Copy, Paste and Select All work in the phone browser too.
+- **A calm update notice.** When a new version is out, Pulli shows an Install Update row in the menu bar panel, a small dot on the menu bar icon and a pill in the sidebar, with one notification per version, instead of a pop-up window. Check for Updates is in the Pulli and Help menus.
+- **Tidier About window.** It now shows Pulli's own copyright line; the font credit stays in the bundled notices.
 
 **Which Macs:** every Mac with Apple silicon - an M1 chip or newer - running macOS 26 Tahoe or later. Intel Macs are not supported.
 
