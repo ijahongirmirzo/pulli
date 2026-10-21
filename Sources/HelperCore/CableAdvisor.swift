@@ -4,7 +4,7 @@ public import PulliProtocol
 /// Decides what to tell the user about their cable, and how fast a copy will go.
 ///
 /// Speeds are measured per phone and link once a copy has run (the helper records them); until
-/// then typical MTP figures are used: about 30 MB/s on USB 2 (a Galaxy Z Fold7 measured 29–32 MB/s)
+/// then typical MTP figures are used: about 30 MB/s on USB 2 (a Galaxy Z Fold7 measured 29-32 MB/s)
 /// and a conservative 90 MB/s on USB 3 (MTP overhead keeps phones well below the 5 Gb/s line rate).
 public enum CableAdvisor {
     static let typicalBytesPerSecond: [LinkSpeed: Double] = [
@@ -15,7 +15,7 @@ public enum CableAdvisor {
     /// sure of; unknown models return nil and the advice stays tentative.
     public static func phoneSupports(model: String?) -> LinkSpeed? {
         guard let model = model?.uppercased() else { return nil }
-        // Samsung (model numbers): Galaxy Z Fold7 (verified on a device, 2026-09-27) and the S22–S25
+        // Samsung (model numbers): Galaxy Z Fold7 (verified on a device, 2026-09-27) and the S22-S25
         // Ultra line have USB 3.2 Gen 1; the Galaxy A line has USB 2.0.
         let usb3Prefixes = ["SM-F966", "SM-S908", "SM-S918", "SM-S928", "SM-S938"]
         if usb3Prefixes.contains(where: model.hasPrefix) { return .usb3 }

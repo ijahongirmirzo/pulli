@@ -1,7 +1,7 @@
 # Reusing Pulli's core in another app
 
-Pulli is split so that its engine does not depend on how a phone is reached. Another app — for
-example one that talks to an Android phone over Wi-Fi — can reuse the parts below and supply its
+Pulli is split so that its engine does not depend on how a phone is reached. Another app - for
+example one that talks to an Android phone over Wi-Fi - can reuse the parts below and supply its
 own phone connection.
 
 ## The parts
@@ -35,7 +35,7 @@ Swift Package Manager can only depend on a whole repository, so:
 
 1. Implement `DeviceConnector` and `DeviceSession` for your transport (ranged reads are what make
    resume byte-exact; a transport without them can still copy, but restarts a file after an
-   interruption — see `ReadStrategy`).
+   interruption - see `ReadStrategy`).
 2. Implement `DeviceWatcher` so the app knows which phones are reachable.
 3. Create a `Journal` and run batches through `TransferSupervisor` exactly as `pulli-cli copy`
    does (`Sources/pulli-cli/CopyCommand.swift` is the smallest complete example).

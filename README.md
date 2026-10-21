@@ -3,13 +3,13 @@
 <h1 align="center">Pulli</h1>
 
 <p align="center">
-  <b>Copy photos and files from your Android phone to your Mac — and never lose progress.</b><br>
+  <b>Copy photos and files from your Android phone to your Mac - and never lose progress.</b><br>
   A native macOS app. Plug in, pick what to copy, and Pulli does the rest, even if the cable
   comes out halfway.
 </p>
 
 <p align="center">
-  <a href="https://github.com/ijahongirmirzo/pulli/releases/latest"><img src="docs/images/download-button.png" width="374" alt="Download Pulli for Mac — free, macOS 26 or later, Apple silicon"></a>
+  <a href="https://github.com/ijahongirmirzo/pulli/releases/latest"><img src="docs/images/download-button.png" width="374" alt="Download Pulli for Mac - free, macOS 26 or later, Apple silicon"></a>
   <br><sub>Free and open source · notarised by Apple · updates itself</sub>
 </p>
 
@@ -37,12 +37,12 @@ around one promise: **a copy that has started will finish, with every byte check
 
 Copying 50 GB of photos and videos from a phone takes a while, and over USB a lot can happen in
 that time. Most tools then start over from zero, or leave a broken file behind. Pulli doesn't:
-**an interrupted copy always continues from where it stopped — even halfway through a 4 GB
+**an interrupted copy always continues from where it stopped - even halfway through a 4 GB
 video.**
 
 | If this happens mid-copy… | …Pulli |
 |---|---|
-| The cable is pulled, or the phone is unplugged | Pauses, waits for the same phone, and continues by itself when it is back — in any port |
+| The cable is pulled, or the phone is unplugged | Pauses, waits for the same phone, and continues by itself when it is back - in any port |
 | The phone locks, or its USB mode is switched | Pauses, tells you what to tap, continues as soon as the phone allows it |
 | The Mac goes to sleep, or you close the lid | Keeps the Mac awake while copying; if it sleeps anyway, continues when it wakes |
 | Pulli is quit, crashes or is force-quit | Continues from the last saved block the next time it runs |
@@ -52,15 +52,15 @@ video.**
 **How it works.** Pulli copies in 4 MB blocks. Each block is written to disk and saved before
 Pulli records it in its copy journal, so the journal never claims more than is really on your
 Mac. On resume, Pulli checks the file on the phone has not changed and continues from the last
-saved block — nothing already copied is read again. A file keeps a `.part` name until it is
+saved block - nothing already copied is read again. A file keeps a `.part` name until it is
 complete, so a half-copied file never looks finished, and Pulli records a SHA-256 fingerprint of
 every file as it copies, which Free Up Space uses to check each copy against the phone.
 
 **Tested on a real phone** (Samsung Galaxy Z Fold7 over USB): a 5.6 GB camera folder of 166 files
 was force-killed twice, the second time in the middle of a video, and every file came out
 byte-identical to the phone's; a 1.39 GB video killed at 318 MB continued from there and matched
-exactly. The engine is also run through a simulated phone that fails on purpose — cable pulls,
-stalls, short reads, power loss — and every copy must come out byte-identical.
+exactly. The engine is also run through a simulated phone that fails on purpose - cable pulls,
+stalls, short reads, power loss - and every copy must come out byte-identical.
 
 ## What it does
 
@@ -77,8 +77,8 @@ matches what the phone sent. Pause, stop or carry on later; Pulli remembers.
   <img alt="Pulli waiting to continue after the phone was unplugged: 45 files finished, resuming from a video at 158 MB" src="docs/images/resume-light.jpg">
 </picture>
 
-**Unplugged? No problem.** Everything copied so far is safe. Plug the phone back in — into any
-port — and Pulli continues by itself. Your Mac stays awake until it is done.
+**Unplugged? No problem.** Everything copied so far is safe. Plug the phone back in - into any
+port - and Pulli continues by itself. Your Mac stays awake until it is done.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/images/browse-dark.jpg">
@@ -94,7 +94,7 @@ under Locations.
   <img alt="Copy complete: 72 files copied, 2 needing attention, with an offer to free up 1.79 GB on the phone" src="docs/images/done-light.jpg">
 </picture>
 
-**Free up space safely.** After a copy, Pulli can delete the originals from the phone — but only
+**Free up space safely.** After a copy, Pulli can delete the originals from the phone - but only
 after checking each copy on your Mac against the phone, byte for byte.
 
 <picture>
@@ -110,7 +110,7 @@ from WhatsApp, Telegram, Instagram and Viber.
   <img alt="Pulli's menu bar panel showing two copies, and two desktop widgets: phone ready with a Copy 9 new button, and a copy at 62 percent" src="docs/images/menu-bar-and-widgets-light.jpg">
 </picture>
 
-**Fits in on your Mac.** A menu bar item and desktop widgets show progress at a glance — and copy
+**Fits in on your Mac.** A menu bar item and desktop widgets show progress at a glance - and copy
 new photos in one click. Close the window and Pulli keeps working from the menu bar. There are
 notifications, Shortcuts actions, a plug-in chime and a cable check that tells you when a
 better cable or port would copy faster.
@@ -121,7 +121,7 @@ better cable or port would copy faster.
 </picture>
 
 **History, on your terms.** Every copy is listed with what went where. Clear History forgets it
-all — copies, the activity log and saved previews — whenever you like.
+all - copies, the activity log and saved previews - whenever you like.
 
 ## Get started
 
@@ -137,7 +137,7 @@ all — copies, the activity log and saved previews — whenever you like.
 Pulli finds the phone within a few seconds and shows what is on it. Pulli updates itself (you
 can turn automatic checks off in Settings); with Homebrew, `brew upgrade` works too.
 
-**Which Macs:** every Mac with Apple silicon — an M1 chip or newer — running macOS 26 Tahoe or
+**Which Macs:** every Mac with Apple silicon - an M1 chip or newer - running macOS 26 Tahoe or
 later. That is every MacBook Air, MacBook Pro, Mac mini, iMac, Mac Studio and Mac Pro with Apple
 silicon, from late 2020 on. Intel Macs are not supported. To check yours: Apple menu › About This
 Mac shows "Chip: Apple M…".
@@ -177,7 +177,7 @@ Providers › turn on Pulli. Pulli shows a short animated guide the first time.
 <summary><b>What happens if the copy is interrupted?</b></summary>
 
 Nothing is lost. Pulli saves its progress as it goes, so after a pulled cable, a locked phone, a
-sleeping Mac or a crash it continues from the last byte that was safely written — it never starts
+sleeping Mac or a crash it continues from the last byte that was safely written - it never starts
 a file again from the beginning unless the file on the phone has changed.
 </details>
 

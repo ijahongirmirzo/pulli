@@ -81,4 +81,4 @@ Run it once on a USB 3 cable and port, and once on USB 2 if you have one.
 
 ## What to send back
 
-The terminal output of steps 1–5, the `info.txt` dump, and anything that surprised you.
+The terminal output of steps 1-5, the `info.txt` dump, and anything that surprised you.

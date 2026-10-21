@@ -58,7 +58,7 @@ struct Doctor: AsyncParsableCommand {
             }
             for interface in phone.record.interfaces {
                 let kind = interface.looksLikeMTP ? "MTP" : String(format: "class %02x/%02x/%02x", interface.interfaceClass, interface.interfaceSubClass, interface.interfaceProtocol)
-                print("  interface \(interface.number): \(kind)\(interface.name.map { " \"\($0)\"" } ?? "")\(interface.holder.map { " — held by \($0)" } ?? "")")
+                print("  interface \(interface.number): \(kind)\(interface.name.map { " \"\($0)\"" } ?? "")\(interface.holder.map { " - held by \($0)" } ?? "")")
             }
             if let holder = phone.record.mtpHolder {
                 print("  ✗ " + Phones.guidance(for: DeviceError.contended(holder: holder)))

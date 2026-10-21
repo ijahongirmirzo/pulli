@@ -134,7 +134,7 @@ private struct TravelAnimation: View {
         TimelineView(.animation(paused: still)) { context in
             let cycle = 2.6
             let t = still ? 0.0 : context.date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: cycle) / cycle
-            // 0–0.15 rest, 0.15–0.65 flight, 0.65–0.8 landing, 0.8–1 fade back in at the start.
+            // 0-0.15 rest, 0.15-0.65 flight, 0.65-0.8 landing, 0.8-1 fade back in at the start.
             let flight = min(max((t - 0.15) / 0.5, 0), 1)
             let eased = flight < 0.5 ? 2 * flight * flight : 1 - pow(-2 * flight + 2, 2) / 2
             let start = CGPoint(x: 70, y: 82), end = CGPoint(x: 290, y: 88)

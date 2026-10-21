@@ -49,7 +49,7 @@ enum Feedback {
             return nil
         }
 
-        let subject = "Pulli feedback – \(shortVersion) (\(build))"
+        let subject = "Pulli feedback - \(shortVersion) (\(build))"
         let phoneSummary: String
         if let device {
             let maker = device.manufacturer ?? ""

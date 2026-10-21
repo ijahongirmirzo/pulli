@@ -71,10 +71,10 @@ Run with `pulli-cli icc` while Pulli was quit, through macOS's camera service (n
 | Phone USB mode | What ImageCaptureCore sees |
 |---|---|
 | File transfer (MTP) | The phone, but **no files** (an empty, complete catalogue) |
-| Transferring images (PTP) | **772 items, 6.01 GB**: 749 images, 21 videos, 2 other — camera photos and videos, screenshots, images saved by messaging apps — as one flat list; each file knows its folder (`DCIM/Camera/…`) |
+| Transferring images (PTP) | **772 items, 6.01 GB**: 749 images, 21 videos, 2 other - camera photos and videos, screenshots, images saved by messaging apps - as one flat list; each file knows its folder (`DCIM/Camera/…`) |
 
 - **Ranged reads work:** 4 MB from the middle of a 385 MB video in 137 ms.
-- **Speed:** 36.6 MB/s with 4–16 MiB reads (1 MiB: 30.7 MB/s) — faster than libmtp on the same cable (about 29 MB/s).
+- **Speed:** 36.6 MB/s with 4-16 MiB reads (1 MiB: 30.7 MB/s) - faster than libmtp on the same cable (about 29 MB/s).
 - **Resume works:** a copy killed at 147 MB continued from there; the result matched the
   chained SHA-256 recorded for the same file by an earlier libmtp copy.
 - Not visible: documents, Downloads, other folders; copying to the phone and deleting need

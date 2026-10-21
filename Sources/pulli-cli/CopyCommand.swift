@@ -36,7 +36,7 @@ struct Copy: AsyncParsableCommand {
         DuplicatePolicy(rawValue: duplicates.replacingOccurrences(of: "-", with: "_")) ?? .auto
     }
 
-    @Option(name: .customLong("chunk-mib"), help: "Chunk size in MiB (1–64).")
+    @Option(name: .customLong("chunk-mib"), help: "Chunk size in MiB (1-64).")
     var chunkMiB: Int = 8
 
     @Option(help: "Journal file. Defaults to ~/Library/Application Support/Pulli/pulli-cli.sqlite.")
@@ -50,7 +50,7 @@ struct Copy: AsyncParsableCommand {
 
     func validate() throws {
         guard paths.count >= 2 else { throw ValidationError("Give at least one path on the phone and a destination folder.") }
-        guard (1...64).contains(chunkMiB) else { throw ValidationError("--chunk-mib must be 1–64") }
+        guard (1...64).contains(chunkMiB) else { throw ValidationError("--chunk-mib must be 1-64") }
         guard DuplicatePolicy(rawValue: duplicates.replacingOccurrences(of: "-", with: "_")) != nil else {
             throw ValidationError("--duplicates must be auto, skip, overwrite or keep-both")
         }

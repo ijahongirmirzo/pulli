@@ -893,7 +893,7 @@ private struct BrowseRow: View {
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            Text(entry.isFolder ? "—" : Format.phoneDate(entry.modifiedWallClock)).frame(width: 170, alignment: .leading).foregroundStyle(tone.t2)
+            Text(entry.isFolder ? "-" : Format.phoneDate(entry.modifiedWallClock)).frame(width: 170, alignment: .leading).foregroundStyle(tone.t2)
             Text(kind).frame(width: 90, alignment: .leading).foregroundStyle(tone.t2)
             Text(entry.isFolder ? "" : Format.bytes(entry.sizeBytes)).frame(width: 80, alignment: .trailing).foregroundStyle(tone.t2)
         }

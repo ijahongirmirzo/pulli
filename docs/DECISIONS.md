@@ -657,7 +657,7 @@ libusb's libtool archive. libusb still loads it.
   on its `main` branch at `https://raw.githubusercontent.com/ijahongirmirzo/pulli/main/appcast.xml`.
   Release DMGs are published as GitHub Release assets in that repository.
 - **Key handling.** EdDSA signatures (`ed25519`). The private key is generated once using Sparkle's
-  `generate_keys` tool and stored strictly in the owner's macOS Keychain — it is never committed or
+  `generate_keys` tool and stored strictly in the owner's macOS Keychain - it is never committed or
   present in the repository. The public key is stored in `Config/sparkle-public-key.txt` and embedded
   as `SUPublicEDKey` into `Info.plist` during release builds (`make-app.sh`).
 - **Safety during active copies.** Updates must never interrupt active file transfers.
