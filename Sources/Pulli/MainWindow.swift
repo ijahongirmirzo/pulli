@@ -251,7 +251,6 @@ private struct TitleBar: View {
                         Label(device.name, systemImage: "chevron.left").font(.pulli(13, .semibold))
                     }
                     .buttonStyle(.plain)
-                    .keyboardShortcut("[", modifiers: .command)
                     .padding(.leading, sidebarWidth + 24)
                 }
                 if case .browse = route, let back = model.backTitle {
@@ -259,7 +258,6 @@ private struct TitleBar: View {
                         Label(back, systemImage: "chevron.left").font(.pulli(13, .semibold))
                     }
                     .buttonStyle(.plain)
-                    .keyboardShortcut("[", modifiers: .command)
                     .padding(.leading, sidebarWidth + 24)
                 }
                 Spacer(minLength: 12)

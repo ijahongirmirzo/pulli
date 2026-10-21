@@ -831,6 +831,105 @@ final class AppModel {
         NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: path)
     }
 
+    // MARK: - Menu Bar Actions and Queries
+
+    /// Whether an unlocked phone is connected and ready.
+    var isPhoneReady: Bool {
+        device?.state == .ready
+    }
+
+    /// Whether the connected phone has new photos waiting to be copied.
+    var hasNewPhotos: Bool {
+        guard let device, device.state == .ready, let summary = summaries[device.id] else { return false }
+        return !summary.newItems.isEmpty
+    }
+
+    /// Copies new photos from the connected phone.
+    func copyNewPhotos() {
+        guard let device, let summary = summaries[device.id], !summary.newItems.isEmpty else { return }
+        picks = [.new]
+        Task { await copyPicks() }
+    }
+
+    /// Whether the phone can be opened in Finder right now.
+    var canOpenInFinder: Bool {
+        isPhoneReady
+    }
+
+    /// Whether the phone can be browsed in Pulli right now.
+    var canBrowsePhone: Bool {
+        isPhoneReady
+    }
+
+    /// Whether the phone storage map can be shown right now.
+    var canOpenStorageMap: Bool {
+        isPhoneReady
+    }
+
+    /// Opens the current destination folder in Finder.
+    func showDestinationInFinder() {
+        showInFinder(destination)
+    }
+
+    /// The phone's Camera folder path, if found on the phone.
+    var cameraFolderPath: String? {
+        guard let device, device.state == .ready, let summary = summaries[device.id] else { return nil }
+        return summary.camera?.path
+    }
+
+    /// The phone's Screenshots folder path, if found on the phone.
+    var screenshotsFolderPath: String? {
+        guard let device, device.state == .ready, let summary = summaries[device.id] else { return nil }
+        return summary.screenshots?.path
+    }
+
+    /// The phone's Downloads folder path, if found on the phone.
+    var downloadsFolderPath: String? {
+        guard let device, device.state == .ready, let summary = summaries[device.id] else { return nil }
+        return summary.downloads?.path
+    }
+
+    /// Opens a folder in the browser, switching to the phone screen if needed.
+    func openFolderInBrowser(_ path: String) {
+        if section != .phone {
+            show(.phone)
+        }
+        showingStorageMap = false
+        openBrowser(at: path)
+        AppDelegate.openMainWindow?()
+    }
+
+    /// Whether the window can navigate back right now.
+    var canGoBack: Bool {
+        switch route {
+        case .storageMap: return true
+        case .browse: return backTitle != nil
+        default: return false
+        }
+    }
+
+    /// Navigates back: closes the storage map or steps back to the parent folder / phone overview.
+    func goBackNavigation() {
+        switch route {
+        case .storageMap: closeStorageMap()
+        case .browse: goBack()
+        default: break
+        }
+    }
+
+    /// Whether the browser can navigate up to an enclosing folder.
+    var canGoToEnclosingFolder: Bool {
+        guard let path = browsePath, path != "/" else { return false }
+        return true
+    }
+
+    /// Navigates up to the enclosing folder.
+    func goUpToEnclosingFolder() {
+        guard let current = browsePath, current != "/" else { return }
+        let parent = (current as NSString).deletingLastPathComponent
+        browse(to: parent.isEmpty ? "/" : parent)
+    }
+
     static func describe(_ error: any Error) -> String {
         (error as? PulliError)?.message ?? "\(error)"
     }

@@ -82,29 +82,7 @@ struct PulliApp: App {
         .defaultSize(width: 1240, height: 760)
         .windowResizability(.contentMinSize)
         .commands {
-            CommandGroup(replacing: .appInfo) {
-                Button("About Pulli") {
-                    var options: [NSApplication.AboutPanelOptionKey: Any] = [:]
-                    if let commit = PulliProtocolVersion.commit {
-                        options[NSApplication.AboutPanelOptionKey(rawValue: "ApplicationVersion")] = "\(PulliProtocolVersion.buildVersion) (\(commit))"
-                    }
-                    options[.credits] = AboutCredits.text
-                    NSApp.orderFrontStandardAboutPanel(options: options)
-                }
-            }
-            CommandGroup(after: .appInfo) {
-                CheckForUpdatesCommand()
-            }
-            CommandGroup(after: .windowArrangement) {
-                OpenActivityCommand()
-            }
-            CommandGroup(after: .toolbar) {
-                SidebarCommand()
-            }
-            CommandGroup(replacing: .newItem) {}
-            CommandGroup(replacing: .help) {
-                FeedbackCommand()
-            }
+            PulliCommands()
         }
 
         Window("Activity", id: "activity") {
@@ -122,22 +100,6 @@ struct PulliApp: App {
             MenuBarLabel().environment(model)
         }
         .menuBarExtraStyle(.window)
-    }
-}
-
-/// View › Hide Sidebar / Show Sidebar (⌃⌘S), as in Finder.
-private struct SidebarCommand: View {
-    @AppStorage("sidebarCollapsed") private var collapsed = false
-    var body: some View {
-        Button(collapsed ? "Show Sidebar" : "Hide Sidebar") { collapsed.toggle() }
-            .keyboardShortcut("s", modifiers: [.command, .control])
-    }
-}
-
-private struct OpenActivityCommand: View {
-    @Environment(\.openWindow) private var openWindow
-    var body: some View {
-        Button("Activity Log") { openWindow(id: "activity") }.keyboardShortcut("l", modifiers: [.command, .option])
     }
 }
 
@@ -162,23 +124,6 @@ enum AboutCredits {
             .foregroundColor: NSColor.secondaryLabelColor,
             .paragraphStyle: style,
         ])
-    }
-}
-
-private struct CheckForUpdatesCommand: View {
-    var body: some View {
-        if let controller = Updates.shared.controller {
-            Button("Check for Updates…") { controller.checkForUpdates(nil) }
-        }
-    }
-}
-
-/// Menu commands get no environment from the window, so the model comes from the app delegate.
-private struct FeedbackCommand: View {
-    var body: some View {
-        if Feedback.isAvailable {
-            Button("Send Feedback…") { Feedback.open(model: AppDelegate.model) }
-        }
     }
 }
 
