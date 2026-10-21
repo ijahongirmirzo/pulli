@@ -45,7 +45,7 @@ enum Snapshots {
             ("freeup-done", { $0.section = .copies; $0.focusedBatchID = 10
                 $0.freeUp = FreeUpState(batchID: 10, verifyID: UUID(), progress: verify(done: true),
                                         stage: .done(DeleteSummary(deleted: 72, bytesFreed: 1_790_000_000, kept: []))) }),
-        ]
+        ] + appStoreScenarios
         for dark in [true, false] {
             for (name, configure) in scenarios {
                 let model = AppModel(preview: state, summaries: [phone.id: summary])
@@ -77,6 +77,15 @@ enum Snapshots {
             write(AppIconArt().frame(width: 1024, height: 1024).scaleEffect(0.5).frame(width: 512, height: 512), size: CGSize(width: 512, height: 512), dark: dark, to: folder, name: "icon")
         }
         print("wrote snapshots to \(folder.path)")
+    }
+
+    /// Screens only the App Store edition has.
+    private static var appStoreScenarios: [(String, (AppModel) -> Void)] {
+#if PULLI_APP_STORE
+        [("guide-holder", { $0.state.devices[phone.id]?.state = .notInFileTransferMode; $0.previewHolder = "com.google.drivefs" })]
+#else
+        []
+#endif
     }
 
     /// `Pulli --readme-frames DIR`: the frames of the README's animation, dark and light, from the

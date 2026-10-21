@@ -226,9 +226,17 @@ struct MainWindow: View {
         case .starting: StartingView()
         case .failed(let message): FailedView(message: message)
         case .welcome: WelcomeView()
+#if PULLI_APP_STORE
+        case .opening(let device): HolderAware(device: device, after: .seconds(20)) { OpeningView(device: device) }
+#else
         case .opening(let device): OpeningView(device: device)
+#endif
         case .overview(let device): OverviewView(device: device)
+#if PULLI_APP_STORE
+        case .guide(let device): HolderAware(device: device) { GuideView(device: device) }
+#else
         case .guide(let device): GuideView(device: device)
+#endif
         case .busy(let device, let app): BusyView(device: device, app: app)
         case .replug(let device): ReplugView(device: device)
         case .browse(let device, let path): BrowseView(device: device, path: path, search: search, preloaded: model.previewListings[path])

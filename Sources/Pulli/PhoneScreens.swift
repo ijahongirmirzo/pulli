@@ -524,7 +524,7 @@ struct BusyView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .panel(radius: 26)
         .padding(.horizontal, 40).padding(.top, 24).padding(.bottom, 40)
-        .onReceive(NotificationCenter.default.publisher(for: NSWorkspace.didTerminateApplicationNotification)) { notification in
+        .onReceive(NSWorkspace.shared.notificationCenter.publisher(for: NSWorkspace.didTerminateApplicationNotification)) { notification in
             if let running = runningClient,
                let terminated = notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication,
                terminated.bundleIdentifier?.caseInsensitiveCompare(running.app.bundleID) == .orderedSame {
@@ -550,6 +550,139 @@ struct BusyView: View {
         }
     }
 }
+
+#if PULLI_APP_STORE
+/// App Store edition: Image Capture shares the phone, and when another app (Google Drive) opened it
+/// first, Pulli's catalogue came back empty again and again (seen 2026-10-21), which looks just like
+/// the wrong USB mode. While a known app runs, name it instead of the "choose Transferring images"
+/// steps; `after` lets an opening phone take its usual few seconds before the app is blamed.
+struct HolderAware<Fallback: View>: View {
+    var device: DeviceSnapshot
+    var after: Duration = .zero
+    @ViewBuilder var fallback: Fallback
+    @Environment(AppModel.self) private var model
+    @Environment(\.isSnapshot) private var isSnapshot
+    /// Bumped when an app launches or quits: the running apps are not observable.
+    @State private var refresh = 0
+    @State private var waited = false
+    /// The app last named, to notice when it quits.
+    @State private var named: CameraClientApp?
+    /// The named app has quit and the phone still shows nothing.
+    @State private var quit: CameraClientApp?
+    @State private var retrying = false
+
+    private var holder: CameraClientApp? {
+        _ = refresh
+        if isSnapshot { return model.previewHolder.flatMap(CameraClientApps.app(forBundleID:)) }
+        return CameraClientApps.firstRunningApp()?.app
+    }
+
+    var body: some View {
+        let holder = (after == .zero || waited) ? holder : nil
+        Group {
+            if let holder {
+                HolderView(app: holder, quit: false, retrying: false)
+            } else if let quit {
+                HolderView(app: quit, quit: true, retrying: retrying)
+            } else {
+                fallback
+            }
+        }
+        .onChange(of: holder, initial: true) { if let holder { named = holder; quit = nil } }
+        .task {
+            guard after > .zero else { return }
+            try? await Task.sleep(for: after)
+            waited = true
+        }
+        .onReceive(NSWorkspace.shared.notificationCenter.publisher(for: NSWorkspace.didLaunchApplicationNotification)) { _ in
+            refresh += 1
+        }
+        .onReceive(NSWorkspace.shared.notificationCenter.publisher(for: NSWorkspace.didTerminateApplicationNotification)) { notification in
+            refresh += 1
+            guard let named, let terminated = notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication,
+                  terminated.bundleIdentifier?.caseInsensitiveCompare(named.bundleID) == .orderedSame else { return }
+            quit = named
+            retrying = true
+            Task {
+                await model.retryOpening()
+                // Image Capture may keep showing nothing until the phone is plugged in afresh.
+                try? await Task.sleep(for: .seconds(8))
+                retrying = false
+            }
+        }
+    }
+}
+
+/// Names the app that may be holding the phone, with a Quit button while macOS lets Pulli quit it.
+private struct HolderView: View {
+    var app: CameraClientApp
+    /// The app has quit; `retrying` while Pulli tries the phone again, then ask for a replug.
+    var quit: Bool
+    var retrying: Bool
+    @Environment(\.tone) private var tone
+    /// macOS refused to quit the app (a sandboxed app may not be allowed to): the words stay.
+    @State private var cannotQuit = false
+
+    private var title: String {
+        if !quit { return "\(app.displayName) may be holding your phone" }
+        return retrying ? "\(app.displayName) has quit" : "Unplug the phone and plug it back in"
+    }
+
+    private var explanation: String {
+        if !quit { return "Quit \(app.displayName), then unplug the phone and plug it back in." }
+        return retrying ? "Trying the phone again…" : "\(app.displayName) has quit, but the phone still shows no photos to this Mac. Unplug it and plug it back in."
+    }
+
+    var body: some View {
+        HStack(spacing: 40) {
+            if quit {
+                PhoneArt(width: 250, palette: .amber, screen: .pause, cable: .unplugged)
+            } else {
+                HStack(spacing: 4) {
+                    Gem(form: .squircle, palette: .pink, symbol: "photo.on.rectangle", size: 170, tilt: -8)
+                    Image(systemName: "ellipsis").font(.system(size: 24, weight: .bold)).foregroundStyle(.white.opacity(0.6))
+                    PhoneArt(width: 170, palette: .teal, screen: .photos, cable: .none)
+                }
+            }
+            VStack(alignment: .leading, spacing: 16) {
+                Chip(text: "Connected · no photos visible", color: tone.amber, fill: tone.amberFill, small: true)
+                Text(title).font(.pulli(32, .medium))
+                HStack(spacing: 10) {
+                    if quit, retrying { ProgressView().controlSize(.small) }
+                    Text(explanation).font(.pulli(15)).foregroundStyle(tone.t2)
+                }
+                .frame(maxWidth: 420, alignment: .leading)
+                if !quit, !cannotQuit {
+                    Button("Quit \(app.displayName)") { quitApp() }
+                        .buttonStyle(PillButtonStyle(kind: .strong))
+                }
+                Text("If it still shows nothing, the phone may be in the wrong USB mode: in its USB notification choose \u{201C}Transferring images\u{201D} (also called PTP).")
+                    .font(.pulli(12.5)).foregroundStyle(tone.t3).frame(maxWidth: 420, alignment: .leading)
+            }
+        }
+        .padding(.horizontal, 40)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .panel(radius: 26)
+        .padding(.horizontal, 40).padding(.top, 24).padding(.bottom, 40)
+    }
+
+    /// `terminate()` sends the app a quit Apple Event, which the App Sandbox may block without an
+    /// entitlement: when it is refused, or the app is still running a while later, the button goes.
+    private func quitApp() {
+        let running = NSWorkspace.shared.runningApplications.filter {
+            $0.bundleIdentifier?.caseInsensitiveCompare(app.bundleID) == .orderedSame
+        }
+        guard !running.isEmpty, running.map({ $0.terminate() }).contains(true) else {
+            cannotQuit = true
+            return
+        }
+        Task {
+            try? await Task.sleep(for: .seconds(6))
+            if running.contains(where: { !$0.isTerminated }) { cannotQuit = true }
+        }
+    }
+}
+#endif
 
 struct ReplugView: View {
     var device: DeviceSnapshot
@@ -620,7 +753,11 @@ struct PhoneHelpSheet: View {
                 Text("Phone not showing up?").font(.pulli(22, .semibold))
             }
             VStack(alignment: .leading, spacing: 10) {
+#if PULLI_APP_STORE
+                row("Unlock the phone and allow access.", "Tap the USB notification on your phone and choose Transferring images (also called PTP) instead of Charging only.")
+#else
                 row("Unlock the phone and allow access.", "Tap the USB notification on your phone and choose File transfer instead of Charging only.")
+#endif
                 row("Try another cable or port.", "Many charger cables only carry power, not data. Plug into a port directly on your Mac rather than a hub.")
                 row("Another app may be using the phone.", "Google Drive, Dropbox, Photos, Image Capture, Preview or Lightroom - quit it, then unplug the phone and plug it back in.")
             }

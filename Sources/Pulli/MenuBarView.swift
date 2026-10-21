@@ -1,4 +1,5 @@
 import AppKit
+import DeviceAPI
 import PulliProtocol
 import SwiftUI
 
@@ -160,7 +161,12 @@ struct MenuBarView: View {
             return "Connected · \(Format.link(device.link))\(speed)"
         case .locked: return "Connected · unlock the phone"
 #if PULLI_APP_STORE
-        case .notInFileTransferMode: return "Connected · choose Transferring images"
+        case .notInFileTransferMode:
+            // An app that opened the phone first leaves Pulli an empty catalogue (see HolderAware).
+            if !isSnapshot, let holder = CameraClientApps.firstRunningApp() {
+                return "Connected · \(holder.app.displayName) may be holding it"
+            }
+            return "Connected · choose Transferring images"
 #else
         case .notInFileTransferMode: return "Connected · choose File transfer"
 #endif

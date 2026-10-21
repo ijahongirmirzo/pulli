@@ -157,6 +157,10 @@ final class AppModel {
     var helperProblem: String?
     /// Folder listings used instead of the phone (screen snapshots).
     @ObservationIgnored var previewListings: [String: [FolderEntry]] = [:]
+#if PULLI_APP_STORE
+    /// Bundle ID of the app shown as holding the phone instead of the running ones (screen snapshots).
+    @ObservationIgnored var previewHolder: String?
+#endif
     /// How the Choose list shows and sorts a folder (as Finder's View options); remembered.
     var browseOptions = BrowseOptions.saved {
         didSet { if !isPreview, browseOptions != oldValue { browseOptions.save() } }

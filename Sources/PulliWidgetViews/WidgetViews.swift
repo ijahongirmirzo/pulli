@@ -373,11 +373,12 @@ public struct MediumView: View {
                             .minimumScaleFactor(0.85)
 
                         let subtitle: String = {
+                            let mode = Edition.isAppStore ? "Transferring images" : "File transfer"
                             if let lastCopy = snapshot?.lastCopy {
                                 let countStr = lastCopy.files == 1 ? "1 file" : "\(lastCopy.files) files"
-                                return "Then choose File transfer on it. Last copy: \(lastCopy.title), \(WidgetTheme.relativeDay(for: lastCopy.date)), \(countStr)."
+                                return "Then choose \(mode) on it. Last copy: \(lastCopy.title), \(WidgetTheme.relativeDay(for: lastCopy.date)), \(countStr)."
                             } else {
-                                return "Then choose File transfer on it."
+                                return "Then choose \(mode) on it."
                             }
                         }()
 
