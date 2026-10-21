@@ -1,10 +1,12 @@
 import AppKit
+import DeviceAPI
 import PulliProtocol
 import SwiftUI
 
 // MARK: - Welcome (no phone)
 
 struct WelcomeView: View {
+    @Environment(AppModel.self) private var model
     @Environment(\.tone) private var tone
     @Environment(\.isSnapshot) private var isSnapshot
     @State private var float = false
@@ -39,7 +41,10 @@ struct WelcomeView: View {
                 if isSnapshot {
                     Text("Phone not showing up?")
                 } else {
-                    Link("Phone not showing up?", destination: URL(string: "https://support.google.com/android/answer/9064445")!)
+                    Button("Phone not showing up?") {
+                        model.showingPhoneHelp = true
+                    }
+                    .buttonStyle(InlineLinkStyle())
                 }
             }
             .font(.pulli(12.5, .semibold)).foregroundStyle(tone.t2)
@@ -436,6 +441,37 @@ struct BusyView: View {
     private var helper: Bool { app == "Pulli's background helper" || app == "Relay's background helper" }
     private var otherPulli: Bool { app == "Another copy of Pulli" || app == "Another copy of Relay" }
 
+    private var isSystemDaemon: Bool {
+        CameraClientApps.isSystemCameraDaemonName(app)
+    }
+
+    private var runningClient: (app: CameraClientApp, running: NSRunningApplication)? {
+        guard isSystemDaemon else { return nil }
+        return CameraClientApps.firstRunningApp()
+    }
+
+    private var titleText: String {
+        if let running = runningClient {
+            return "\(running.app.displayName) keeps taking the phone"
+        }
+        let name = isSystemDaemon ? CameraClientApps.photoServiceName : app
+        return "\(name) is using your phone"
+    }
+
+    private var explanation: String {
+        if let running = runningClient {
+            return "Quit \(running.app.displayName), then Pulli carries on."
+        }
+        if helper {
+            return "Pulli's background helper is copying from this phone. Connect to it to see and control its copies here."
+        }
+        if otherPulli {
+            return "A second copy of Pulli is open (for example one opened from the disk image) and has the phone. Quit it and this one picks up the phone straight away."
+        }
+        let name = isSystemDaemon ? CameraClientApps.photoServiceName : app
+        return "Only one app at a time can talk to the phone. Quit \(name) and Pulli picks up the connection straight away."
+    }
+
     var body: some View {
         HStack(spacing: 40) {
             HStack(spacing: 4) {
@@ -448,16 +484,28 @@ struct BusyView: View {
                 PhoneArt(width: 170, palette: .teal, screen: .photos, cable: .none)
             }
             VStack(alignment: .leading, spacing: 16) {
-                Text("\(app) is using your phone").font(.pulli(32, .medium))
+                Text(titleText).font(.pulli(32, .medium))
                 Text(explanation)
                     .font(.pulli(15)).foregroundStyle(tone.t2).frame(maxWidth: 400, alignment: .leading)
                 HStack(spacing: 10) {
-                    if helper {
+                    if let running = runningClient {
+                        Button("Quit \(running.app.displayName)") {
+                            running.running.terminate()
+                        }
+                        .buttonStyle(PillButtonStyle(kind: .strong))
+                    } else if helper {
                         Button("Connect to the Helper") { Task { await model.reconnect() } }.buttonStyle(PillButtonStyle(kind: .strong))
                     } else if otherPulli {
                         Button("Quit the Other Pulli") { quitOtherPulli() }.buttonStyle(PillButtonStyle(kind: .strong))
                     } else {
-                        Button("Quit \(app)") { quit(app) }.buttonStyle(PillButtonStyle(kind: .strong))
+                        let name = isSystemDaemon ? CameraClientApps.photoServiceName : app
+                        Button("Quit \(name)") {
+                            quit(name)
+                            if isSystemDaemon {
+                                Task { await model.retryOpening() }
+                            }
+                        }
+                        .buttonStyle(PillButtonStyle(kind: .strong))
                     }
                 }
                 Text("Pulli releases the phone from macOS's own camera service by itself. It never closes an app you opened without asking.")
@@ -468,16 +516,16 @@ struct BusyView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .panel(radius: 26)
         .padding(.horizontal, 40).padding(.top, 24).padding(.bottom, 40)
-    }
-
-    private var explanation: String {
-        if helper {
-            return "Pulli's background helper is copying from this phone. Connect to it to see and control its copies here."
+        .onReceive(NotificationCenter.default.publisher(for: NSWorkspace.didTerminateApplicationNotification)) { notification in
+            if let running = runningClient,
+               let terminated = notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication,
+               terminated.bundleIdentifier?.caseInsensitiveCompare(running.app.bundleID) == .orderedSame {
+                Task { await model.retryOpening() }
+            } else if let terminated = notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication,
+                      terminated.localizedName == app {
+                Task { await model.retryOpening() }
+            }
         }
-        if otherPulli {
-            return "A second copy of Pulli is open (for example one opened from the disk image) and has the phone. Quit it and this one picks up the phone straight away."
-        }
-        return "Only one app at a time can talk to the phone. Quit \(app) and Pulli picks up the connection straight away."
     }
 
     private func quit(_ name: String) {
@@ -536,6 +584,44 @@ struct CableHelpSheet: View {
                     .font(.pulli(13, .semibold)).monospacedDigit()
             }
             HStack { Spacer(); Button("Done") { dismiss() }.buttonStyle(PillButtonStyle(kind: .strong)).keyboardShortcut(.defaultAction) }
+        }
+        .padding(28)
+        .frame(width: 480)
+        .background(SceneBackground(kind: .home, animated: false))
+        .modifier(ToneProvider())
+    }
+
+    private func row(_ title: String, _ detail: String) -> some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(title).font(.pulli(14, .semibold))
+            Text(detail).font(.pulli(13)).opacity(0.8).fixedSize(horizontal: false, vertical: true)
+        }
+    }
+}
+
+// MARK: - Phone not showing up?
+
+struct PhoneHelpSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.tone) private var tone
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(spacing: 14) {
+                Gem(form: .disc, palette: .teal, symbol: "questionmark.circle", size: 64)
+                Text("Phone not showing up?").font(.pulli(22, .semibold))
+            }
+            VStack(alignment: .leading, spacing: 10) {
+                row("Unlock the phone and allow access.", "Tap the USB notification on your phone and choose File transfer instead of Charging only.")
+                row("Try another cable or port.", "Many charger cables only carry power, not data. Plug into a port directly on your Mac rather than a hub.")
+                row("Another app may be using the phone.", "Google Drive, Dropbox, Photos, Image Capture, Preview or Lightroom - quit it, then unplug the phone and plug it back in.")
+            }
+            HStack {
+                Link("More troubleshooting…", destination: URL(string: "https://support.google.com/android/answer/9064445")!)
+                    .font(.pulli(13)).foregroundStyle(tone.t2)
+                Spacer()
+                Button("Done") { dismiss() }.buttonStyle(PillButtonStyle(kind: .strong)).keyboardShortcut(.defaultAction)
+            }
         }
         .padding(28)
         .frame(width: 480)

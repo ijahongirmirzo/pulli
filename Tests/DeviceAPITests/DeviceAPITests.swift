@@ -57,3 +57,51 @@ import Testing
         #expect(!ReadStrategy.whole.supportsResume(fileSize: 1))
     }
 }
+
+@Suite struct CameraClientAppsTests {
+    @Test func looksUpKnownAppsByBundleID() {
+        #expect(CameraClientApps.app(forBundleID: "com.google.drivefs")?.displayName == "Google Drive")
+        #expect(CameraClientApps.app(forBundleID: "COM.GETDROPBOX.DROPBOX")?.displayName == "Dropbox")
+        #expect(CameraClientApps.app(forBundleID: "com.apple.Photos")?.displayName == "Photos")
+        #expect(CameraClientApps.app(forBundleID: "com.apple.Image_Capture")?.displayName == "Image Capture")
+        #expect(CameraClientApps.app(forBundleID: "com.apple.Preview")?.displayName == "Preview")
+        #expect(CameraClientApps.app(forBundleID: "com.adobe.LightroomClassicCC7")?.displayName == "Lightroom Classic")
+        #expect(CameraClientApps.app(forBundleID: "com.adobe.mas.lightroomCC")?.displayName == "Lightroom")
+        #expect(CameraClientApps.app(forBundleID: "com.adobe.lightroomCC")?.displayName == "Lightroom")
+        #expect(CameraClientApps.app(forBundleID: "com.samsung.SmartSwitch")?.displayName == "Samsung Smart Switch")
+        #expect(CameraClientApps.app(forBundleID: "com.google.android.mtpviewer")?.displayName == "Android File Transfer")
+        #expect(CameraClientApps.app(forBundleID: "io.ganeshrvel.openmtp")?.displayName == "OpenMTP")
+    }
+
+    @Test func returnsNilForUnknownBundleIDs() {
+        #expect(CameraClientApps.app(forBundleID: "com.unknown.app") == nil)
+        #expect(CameraClientApps.app(forBundleID: "") == nil)
+    }
+
+    @Test func preservesOrderWhenSeveralAppsRun() {
+        // When both Dropbox and Google Drive run, Google Drive has priority in declared order.
+        let running1 = ["com.getdropbox.dropbox", "com.google.drivefs"]
+        #expect(CameraClientApps.firstRunning(in: running1)?.displayName == "Google Drive")
+
+        // When Photos, OpenMTP and Preview run, Photos comes first, then Preview, then OpenMTP.
+        let running2 = ["io.ganeshrvel.openmtp", "com.apple.Preview", "com.apple.Photos"]
+        let matching = CameraClientApps.matching(runningBundleIDs: running2).map(\.displayName)
+        #expect(matching == ["Photos", "Preview", "OpenMTP"])
+        #expect(CameraClientApps.firstRunning(in: running2)?.displayName == "Photos")
+
+        // Unknown bundle IDs among running apps are ignored.
+        let running3 = ["org.mozilla.firefox", "com.google.chrome"]
+        #expect(CameraClientApps.firstRunning(in: running3) == nil)
+        #expect(CameraClientApps.matching(runningBundleIDs: running3).isEmpty)
+    }
+
+    @Test func sanitizesSystemDaemonNames() {
+        #expect(CameraClientApps.sanitizedHolderName("ptpcamerad") == "macOS's photo service")
+        #expect(CameraClientApps.sanitizedHolderName("mscamerad") == "macOS's photo service")
+        #expect(CameraClientApps.sanitizedHolderName("mscamerad-xpc") == "macOS's photo service")
+        #expect(CameraClientApps.sanitizedHolderName("macOS's photo service") == "macOS's photo service")
+        #expect(CameraClientApps.sanitizedHolderName("Google Drive") == "Google Drive")
+        #expect(CameraClientApps.sanitizedHolderName("Photos") == "Photos")
+    }
+}
+

@@ -17,7 +17,7 @@ public enum WaitReason: Sendable, Equatable, CustomStringConvertible {
         case .disconnected: "Phone disconnected. Reconnect it to continue."
         case .locked: "Unlock your phone and allow access to continue."
         case .notInFileTransferMode: "On your phone, choose USB mode \"File transfer\"."
-        case .heldBy(let holder): "\(holder.name) is using the phone. Quit it to continue."
+        case .heldBy(let holder): "\(CameraClientApps.sanitizedHolderName(holder.name)) is using the phone. Quit it to continue."
         case .destination(let error): "Destination problem: \(error). Fix it to continue."
         case .retrying(let delay, let reason): "\(reason). Retrying in \(delay.formatted(.units(allowed: [.seconds], width: .abbreviated)))."
         }

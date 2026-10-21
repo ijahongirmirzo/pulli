@@ -103,6 +103,14 @@ struct MainWindow: View {
             BannerView(text: banner) { model.banner = nil }
                 .padding(.horizontal, 32).padding(.top, 10).padding(.bottom, 2)
                 .transition(.move(edge: .top).combined(with: .opacity))
+        } else if model.finderLocationDisabled {
+            FinderDisabledNote {
+                model.finderLocationDisabled = false
+            } onOpenSettings: {
+                model.openFileProviderSettings()
+            }
+            .padding(.horizontal, 32).padding(.top, 10).padding(.bottom, 2)
+            .transition(.move(edge: .top).combined(with: .opacity))
         } else if let troubleID = model.finderTrouble {
             let name = model.state.devices[troubleID]?.name ?? model.device?.name ?? "the phone"
             FinderTroubleNote(name: name) {
@@ -150,6 +158,7 @@ struct MainWindow: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .animation(.pulliNavigation, value: model.banner)
                 .animation(.pulliNavigation, value: model.finderTrouble)
+                .animation(.pulliNavigation, value: model.finderLocationDisabled)
             }
             .animation(model.navTransition == .fade ? .easeInOut(duration: 0.3) : .pulliNavigation, value: routeIdentity(route))
             TitleBar(route: route, sidebarWidth: fullSidebar ? FullSidebar.width : Rail.width, search: $search)
@@ -172,12 +181,16 @@ struct MainWindow: View {
         .frame(minWidth: 1000, minHeight: 660)
         .ignoresSafeArea()
         .sheet(isPresented: Binding(get: { model.showingCableHelp }, set: { model.showingCableHelp = $0 })) { CableHelpSheet() }
+        .sheet(isPresented: Binding(get: { model.showingPhoneHelp }, set: { model.showingPhoneHelp = $0 })) { PhoneHelpSheet() }
         // Opened from the disk image: offer to move to Applications (once the window is up).
         .sheet(isPresented: $offeringMove) { MoveToApplicationsView { offeringMove = false } }
         .onAppear {
             guard !isSnapshot, InstallLocation.shouldOffer else { return }
             // A timer, not a task: the window's first moments rebuild it, which would cancel a task.
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { offeringMove = true }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+            Task { await model.recheckFinderLocationStatus() }
         }
     }
 
@@ -398,6 +411,31 @@ private struct FinderTroubleNote: View {
         .padding(.horizontal, 16).padding(.vertical, 10)
         .panel(radius: 14, tint: tone.amberFill, opaque: true)
         .frame(maxWidth: 600)
+    }
+}
+
+/// The File Provider extension is switched off in System Settings.
+private struct FinderDisabledNote: View {
+    var onClose: () -> Void
+    var onOpenSettings: () -> Void
+    @Environment(\.tone) private var tone
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "exclamationmark.circle.fill").foregroundStyle(tone.amber)
+            Text("Pulli's Finder location is switched off. Turn on Pulli in System Settings \u{203A} General \u{203A} Login Items & Extensions \u{203A} File Providers.")
+                .font(.pulli(13, .medium))
+                .lineLimit(2)
+                .fixedSize(horizontal: false, vertical: true)
+            Button("Open Settings", action: onOpenSettings)
+                .buttonStyle(PillButtonStyle(small: true))
+            Button("Close", systemImage: "xmark", action: onClose)
+                .labelStyle(.iconOnly)
+                .buttonStyle(.plain)
+        }
+        .padding(.horizontal, 16).padding(.vertical, 10)
+        .panel(radius: 14, tint: tone.amberFill, opaque: true)
+        .frame(maxWidth: 680)
     }
 }
 

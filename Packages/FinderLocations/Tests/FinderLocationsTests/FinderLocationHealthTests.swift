@@ -108,4 +108,23 @@ import Testing
         #expect(healthy)
         #expect(recorder.listed == [root, docs])
     }
+
+    @Test func detectsDomainDisabledError() async throws {
+        let disabledError = NSError(domain: "NSFileProviderErrorDomain", code: -2011, userInfo: [NSLocalizedDescriptionKey: "Sync is not enabled"])
+        #expect(FinderLocationHealth.isDomainDisabledError(disabledError))
+
+        let otherError = NSError(domain: "NSFileProviderErrorDomain", code: -1000)
+        #expect(!FinderLocationHealth.isDomainDisabledError(otherError))
+
+        let root = URL(fileURLWithPath: "/fake/root")
+        let status = await FinderLocationHealth.checkStatus(root: root) { _ in
+            throw disabledError
+        }
+        #expect(status == .domainDisabled)
+
+        let healthy = await FinderLocationHealth.check(root: root) { _ in
+            throw disabledError
+        }
+        #expect(!healthy)
+    }
 }

@@ -114,6 +114,7 @@ let package = Package(
         .executableTarget(
             name: "Pulli",
             dependencies: [
+                "DeviceAPI",
                 "PulliClient", "PulliProtocol", "PulliHost", "WorkerIPC", "PulliWidgetViews",
                 .product(name: "FinderLocations", package: "FinderLocations"),
                 .product(name: "RemoteFiles", package: "FinderLocations"),

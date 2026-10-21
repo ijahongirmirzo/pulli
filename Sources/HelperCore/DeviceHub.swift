@@ -313,7 +313,8 @@ public actor DeviceHub: DeviceConnector {
                 case .otherPulli:
                     entry.state = .heldBy(appName: "Another copy of Pulli")
                 }
-            case .contended(let holder): entry.state = .heldBy(appName: holder.name)
+            case .contended(let holder):
+                entry.state = .heldBy(appName: CameraClientApps.sanitizedHolderName(holder.name))
             case .deviceGone: break
             // Pulli's own installation is broken: replugging the phone would not help.
             case .unsupported(let detail) where detail.contains("worker"): entry.state = .unknown

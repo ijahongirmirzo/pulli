@@ -1,4 +1,5 @@
 import AppKit
+import DeviceAPI
 import PulliProtocol
 import SwiftUI
 
@@ -196,7 +197,8 @@ struct PausedView: View {
         case .phoneDisconnected: "Reconnect \(phone) to continue"
         case .phoneLocked: "Unlock \(phone) to continue"
         case .notInFileTransferMode: "Choose \u{201C}File transfer\u{201D} on \(phone)"
-        case .heldBy(let app): "\(app) is using \(phone)"
+        case .heldBy(let app):
+            "\(effectiveHolderName(for: app)) is using \(phone)"
         case .destinationFull: "Your Mac needs more space"
         case .destinationUnavailable: "The destination is not available"
         case .retrying(let seconds, _): "Trying again in \(Format.duration(Double(seconds)))"
@@ -205,19 +207,36 @@ struct PausedView: View {
         }
     }
 
+    private func effectiveHolderName(for rawApp: String) -> String {
+        let name = CameraClientApps.sanitizedHolderName(rawApp)
+        if CameraClientApps.isSystemCameraDaemonName(name), let running = CameraClientApps.firstRunningApp() {
+            return running.app.displayName
+        }
+        return name
+    }
+
     private var detail: String {
-        switch reason {
+        return switch reason {
         case .byUser: "Nothing is lost. Resume whenever you like; Pulli carries on from where it stopped."
         case .phoneDisconnected: "The phone was unplugged. Everything copied so far is safe on your Mac. Plug it back in, into any port, and Pulli carries on by itself."
         case .phoneLocked: "The phone locked before Pulli could open it. Unlock it and the copy continues."
         case .notInFileTransferMode: "The phone switched to charging only. Swipe down, tap the USB notification and choose File transfer."
-        case .heldBy(let app): "Quit \(app) and the copy continues straight away."
+        case .heldBy(let app):
+            heldByDetail(for: app)
         case .destinationFull: "The destination disk is full. Free up some space and Pulli continues by itself."
         case .destinationUnavailable(let detail): "Pulli cannot write to \(Format.place(batch.destinationPath)): \(detail). Reconnect the disk or choose another place."
         case .retrying(_, let detail): "The phone did not answer (\(detail)). Pulli tries again by itself."
         case .queued: "One phone copies one thing at a time. This copy starts as soon as the one before it finishes."
         case .unknown: "Pulli continues by itself when it can."
         }
+    }
+
+    private func heldByDetail(for rawApp: String) -> String {
+        let name = CameraClientApps.sanitizedHolderName(rawApp)
+        if CameraClientApps.isSystemCameraDaemonName(name), let running = CameraClientApps.firstRunningApp() {
+            return "Quit \(running.app.displayName), then Pulli carries on."
+        }
+        return "Quit \(name) and the copy continues straight away."
     }
 
     private var status: String {
