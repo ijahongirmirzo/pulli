@@ -7,6 +7,8 @@ import Synchronization
 public protocol ICCCameraBackend: AnyObject, Sendable {
     /// Every file now, with IDs that stay the same for an item for the whole session.
     func catalogue() -> [ICCCatalogueEntry]
+    /// Waits until the catalogue is complete, or `timeout` expires.
+    func waitForCatalogue(timeout: Duration) async throws
     /// Reads up to `length` bytes at `offset`. `completion` may run on any queue, or never.
     func read(_ id: Int, offset: UInt64, length: Int, completion: @escaping @Sendable (Data?, (any Error)?) -> Void)
     /// The phone's small JPEG preview, if it has one.
@@ -14,6 +16,10 @@ public protocol ICCCameraBackend: AnyObject, Sendable {
     /// `removed`: the phone left, or the session ended unasked. `catalogueChanged`: items came or went.
     func setHandlers(removed: @escaping @Sendable () -> Void, catalogueChanged: @escaping @Sendable () -> Void)
     func close() async
+}
+
+extension ICCCameraBackend {
+    public func waitForCatalogue(timeout: Duration) async throws {}
 }
 
 /// A catalogue item as the backend reports it, before folder synthesis.
@@ -64,6 +70,12 @@ public final class ICCSession: DeviceSession, Sendable {
     }
 
     private let state = Mutex(State())
+    private let contentChangedHandler = Mutex<(@Sendable () -> Void)?>(nil)
+
+    public var onContentChanged: (@Sendable () -> Void)? {
+        get { contentChangedHandler.withLock { $0 } }
+        set { contentChangedHandler.withLock { $0 = newValue } }
+    }
 
     /// - Parameter callTimeout: how long a read may take before it counts as a stall (`.transient`).
     public init(backend: any ICCCameraBackend, info: DeviceInfo, epoch: SessionEpoch, timeZone: TimeZone = .current,
@@ -74,14 +86,21 @@ public final class ICCSession: DeviceSession, Sendable {
         self.timeZone = timeZone
         self.callTimeout = callTimeout
         state.withLock { $0.nextHandle = UInt32(truncatingIfNeeded: epoch.rawValue &* 100_003) | 1 }
-        backend.setHandlers(removed: { [weak self] in self?.markGone() },
-                            catalogueChanged: { [weak self] in self?.state.withLock { $0.stale = true } })
+        backend.setHandlers(
+            removed: { [weak self] in self?.markGone() },
+            catalogueChanged: { [weak self] in
+                guard let self else { return }
+                self.state.withLock { $0.stale = true }
+                self.contentChangedHandler.withLock { $0 }?()
+            }
+        )
     }
 
     // MARK: DeviceSession
 
     /// Empty while the catalogue is empty (the phone is in "File transfer" mode, or has no media).
     public func storages() async throws(DeviceError) -> [StorageInfo] {
+        try await ensureCatalogueReady()
         let index = try currentIndex()
         guard !index.isEmpty else { return [] }
         return [StorageInfo(id: Self.storageID, description: Self.storageName, volumeIdentifier: nil, capacityBytes: nil, freeBytes: nil)]
@@ -89,22 +108,29 @@ public final class ICCSession: DeviceSession, Sendable {
 
     public func list(_ folder: RemotePath, storage: StorageID) -> AsyncThrowingStream<[RemoteEntry], any Error> {
         AsyncThrowingStream { continuation in
-            do throws(DeviceError) {
-                guard storage == Self.storageID else { throw .notFound(folder) }
-                let index = try currentIndex()
-                guard index.node(at: folder) == .folder, let children = index.folders[folder] else { throw .notFound(folder) }
-                let entries = children.map { entry(for: $0, in: folder, index: index) }
-                for start in stride(from: 0, to: entries.count, by: Self.pageSize) {
-                    continuation.yield(Array(entries[start..<min(start + Self.pageSize, entries.count)]))
+            let task = Task {
+                do {
+                    guard storage == Self.storageID else { throw DeviceError.notFound(folder) }
+                    try await self.ensureCatalogueReady()
+                    let index = try self.currentIndex()
+                    guard index.node(at: folder) == .folder, let children = index.folders[folder] else {
+                        throw DeviceError.notFound(folder)
+                    }
+                    let entries = children.map { self.entry(for: $0, in: folder, index: index) }
+                    for start in stride(from: 0, to: entries.count, by: Self.pageSize) {
+                        continuation.yield(Array(entries[start..<min(start + Self.pageSize, entries.count)]))
+                    }
+                    continuation.finish()
+                } catch {
+                    continuation.finish(throwing: error)
                 }
-                continuation.finish()
-            } catch {
-                continuation.finish(throwing: error)
             }
+            continuation.onTermination = { _ in task.cancel() }
         }
     }
 
     public func stat(_ path: RemotePath, storage: StorageID) async throws(DeviceError) -> RemoteEntry? {
+        try await ensureCatalogueReady()
         let index = try currentIndex()
         guard storage == Self.storageID, !path.isRoot, let node = index.node(at: path) else { return nil }
         let itemID: Int? = if case .file(let id) = node { id } else { nil }
@@ -185,6 +211,17 @@ public final class ICCSession: DeviceSession, Sendable {
             return Array(state.pending.values)
         }
         for fail in waiting { fail(.deviceGone) }
+    }
+
+    private func ensureCatalogueReady() async throws(DeviceError) {
+        do {
+            try await backend.waitForCatalogue(timeout: callTimeout)
+        } catch let error as DeviceError {
+            throw error
+        } catch {
+            let gone = state.withLock { $0.gone }
+            throw ICCErrorMapping.deviceError(error, deviceRemoved: gone)
+        }
     }
 
     /// The folder index, rebuilt first if Image Capture reported changes.

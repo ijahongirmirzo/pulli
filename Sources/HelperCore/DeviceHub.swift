@@ -27,6 +27,8 @@ public actor DeviceHub: DeviceConnector {
         /// Renewals while it stayed locked: each waits twice as long (up to a minute), as every
         /// open starts a worker process.
         var lockedRenewals = 0
+        /// Incremented when the device reports that its catalogue or contents changed.
+        var contentRevision: UInt64 = 0
     }
 
     private let connector: any DeviceConnector
@@ -255,6 +257,11 @@ public actor DeviceHub: DeviceConnector {
             entry.failures = 0
             entry.lastUsed = .now
             entries[key] = entry
+            session.onContentChanged = { [weak self, key] in
+                Task { [weak self] in
+                    await self?.handleContentChanged(for: key)
+                }
+            }
             if let snapshot = snapshot(for: key) { onChange?(snapshot) }
             return session
         case .failure(let error):
@@ -307,6 +314,15 @@ public actor DeviceHub: DeviceConnector {
         }
     }
 
+    func handleContentChanged(for key: DeviceKey) {
+        guard var entry = entries[key], entry.state == .ready else { return }
+        entry.contentRevision &+= 1
+        entries[key] = entry
+        if let snapshot = snapshot(for: key) {
+            onChange?(snapshot)
+        }
+    }
+
     private func snapshot(for key: DeviceKey) -> DeviceSnapshot? {
         guard let entry = entries[key] else { return nil }
         let usb = entry.candidate.usb
@@ -327,7 +343,8 @@ public actor DeviceHub: DeviceConnector {
             storages: entry.storages.map { StorageSnapshot(id: $0.id, name: $0.description, capacityBytes: $0.capacityBytes, freeBytes: $0.freeBytes) },
             resumable: entry.info.map { $0.readStrategy != .whole } ?? true,
             cable: CableAdvisor.advice(link: link, throughHub: usb.throughHub, model: entry.info?.model,
-                                       measured: { measuredRate(key, $0) })
+                                       measured: { measuredRate(key, $0) }),
+            contentRevision: entry.contentRevision
         )
     }
 }
@@ -350,6 +367,11 @@ final class LeasedSession: DeviceSession, @unchecked Sendable {
 
     var info: DeviceInfo { base.info }
     var epoch: SessionEpoch { base.epoch }
+
+    var onContentChanged: (@Sendable () -> Void)? {
+        get { base.onContentChanged }
+        set { base.onContentChanged = newValue }
+    }
 
     private func noting<T>(_ body: () async throws(DeviceError) -> T) async throws(DeviceError) -> T {
         do {

@@ -45,6 +45,16 @@ public protocol DeviceSession: AnyObject, Sendable {
     /// Renames a file or folder in place (Finder, through the phone drive).
     func rename(_ ref: ObjectRef, to name: String) async throws(DeviceError)
 
+    /// Notified when the device reports its contents changed (e.g. photos added).
+    var onContentChanged: (@Sendable () -> Void)? { get set }
+
     /// Ends the session. After this, every call throws `.deviceGone`.
     func close() async
+}
+
+extension DeviceSession {
+    public var onContentChanged: (@Sendable () -> Void)? {
+        get { nil }
+        set {}
+    }
 }

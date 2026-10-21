@@ -414,8 +414,16 @@ final class AppModel {
             browsePath = nil
             browseRoot = nil
         }
-        for device in new.devices.values where device.state == .ready && summaries[device.id] == nil && summaryTasks[device.id] == nil {
-            loadSummary(device)
+        for device in new.devices.values where device.state == .ready {
+            let revisionChanged = old.devices[device.id]?.contentRevision != device.contentRevision
+            if summaries[device.id] == nil || revisionChanged {
+                if revisionChanged {
+                    summaryTasks.removeValue(forKey: device.id)?.cancel()
+                }
+                if summaryTasks[device.id] == nil {
+                    loadSummary(device)
+                }
+            }
         }
         let disconnected = Set(finderMounts.keys).union(finderLocations.keys).filter { new.devices[$0] == nil }
         for id in disconnected { unmountFinderDrive(id) }
@@ -661,9 +669,11 @@ final class AppModel {
             let summary = PhoneSummary(storageID: storage.id, camera: cameraFolder, screenshots: dcimShots ?? pictureShots,
                                        downloads: downloadFolder, cameraMark: mark)
             guard !Task.isCancelled else { return }
+            // A refresh (the phone's catalogue grew) keeps what the user already ticked.
+            let isFirst = self.summaries[id] == nil
             self.summaries[id] = summary
             self.summaryTasks[id] = nil
-            if self.selectedDeviceID == id {
+            if self.selectedDeviceID == id, isFirst {
                 self.picks = !summary.newItems.isEmpty ? [.new] : (summary.camera != nil ? [.camera] : [])
             }
             await self.enrichSummary(deviceID: id, storageID: storage.id)

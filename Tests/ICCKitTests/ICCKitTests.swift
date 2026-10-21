@@ -178,8 +178,9 @@ final class FakeCamera: ICCCameraBackend, @unchecked Sendable {
     }
 
     private let lock = NSLock()
-    private let files: [Int: File]
+    private var files: [Int: File]
     private var removed: (@Sendable () -> Void)?
+    private var catalogueChanged: (@Sendable () -> Void)?
     private var plugged = true
     var pluggedIn: Bool { lock.withLock { plugged } }
     /// Pull the cable once this many bytes were served since the last plug.
@@ -190,24 +191,120 @@ final class FakeCamera: ICCCameraBackend, @unchecked Sendable {
     private var plugCount = 1
     private var readLog: [Read] = []
 
+    private var isReady = true
+    private var percent = 100
+    private var complete = true
+    private var quietPeriod: Duration = .milliseconds(50)
+    private var quietTask: Task<Void, Never>?
+    private var completionContinuations: [CheckedContinuation<Void, any Error>] = []
+
     var plugs: Int { lock.withLock { plugCount } }
     var reads: [Read] { lock.withLock { readLog } }
+    var isCatalogueComplete: Bool { lock.withLock { complete } }
 
-    init(_ files: [String: Data], modified: Date = Date(timeIntervalSince1970: 1_789_625_967)) {
+    init(_ files: [String: Data], modified: Date = Date(timeIntervalSince1970: 1_789_625_967),
+         isReady: Bool = true, percent: Int = 100, complete: Bool = true, quietPeriod: Duration = .milliseconds(50)) {
         var table: [Int: File] = [:]
         for (offset, (path, content)) in files.sorted(by: { $0.key < $1.key }).enumerated() {
             table[offset + 1] = File(components: path.split(separator: "/").map(String.init), content: content, modified: modified)
         }
         self.files = table
+        self.isReady = isReady
+        self.percent = percent
+        self.complete = complete
+        self.quietPeriod = quietPeriod
+    }
+
+    func waitForCatalogue(timeout: Duration) async throws {
+        let (already, plugged) = lock.withLock { (complete, self.plugged) }
+        guard plugged else { throw DeviceError.deviceGone }
+        if already { return }
+
+        try await withThrowingTaskGroup(of: Void.self) { group in
+            group.addTask {
+                try await withCheckedThrowingContinuation { (cont: CheckedContinuation<Void, any Error>) in
+                    let registered = self.lock.withLock { () -> Bool in
+                        if self.complete { return false }
+                        self.completionContinuations.append(cont)
+                        return true
+                    }
+                    if !registered { cont.resume(returning: ()) }
+                }
+            }
+            group.addTask {
+                try await Task.sleep(for: timeout)
+                self.lock.withLock {
+                    self.complete = true
+                    let waiters = self.completionContinuations
+                    self.completionContinuations.removeAll()
+                    for waiter in waiters { waiter.resume(returning: ()) }
+                }
+            }
+            _ = try await group.next()
+            group.cancelAll()
+        }
+    }
+
+    func setReady(_ ready: Bool) {
+        lock.withLock {
+            isReady = ready
+            evaluateCompleteness()
+        }
+    }
+
+    func setPercent(_ newPercent: Int) {
+        lock.withLock {
+            percent = newPercent
+            evaluateCompleteness()
+        }
+    }
+
+    func addBatch(_ newFiles: [String: Data], percent newPercent: Int? = nil, modified: Date = Date(timeIntervalSince1970: 1_789_625_967)) {
+        let notify = lock.withLock { () -> (@Sendable () -> Void)? in
+            for (path, content) in newFiles.sorted(by: { $0.key < $1.key }) {
+                let id = files.count + 1
+                files[id] = File(components: path.split(separator: "/").map(String.init), content: content, modified: modified)
+            }
+            if let newPercent {
+                percent = newPercent
+            }
+            evaluateCompleteness(itemsAdded: true)
+            return catalogueChanged
+        }
+        notify?()
+    }
+
+    private func evaluateCompleteness(itemsAdded: Bool = false) {
+        guard !complete else { return }
+        quietTask?.cancel()
+        quietTask = nil
+        guard isReady && percent == 100 else { return }
+
+        let period = quietPeriod
+        quietTask = Task { [weak self] in
+            try? await Task.sleep(for: period)
+            guard !Task.isCancelled, let self else { return }
+            self.lock.withLock {
+                guard self.isReady && self.percent == 100 && !self.complete else { return }
+                self.complete = true
+                let waiters = self.completionContinuations
+                self.completionContinuations.removeAll()
+                for waiter in waiters { waiter.resume(returning: ()) }
+            }
+        }
     }
 
     func content(_ path: String) -> Data? {
-        files.values.first { $0.components.joined(separator: "/") == path }?.content
+        lock.withLock {
+            files.values.first { $0.components.joined(separator: "/") == path }?.content
+        }
     }
 
     func catalogue() -> [ICCCatalogueEntry] {
-        files.sorted { $0.key < $1.key }.map {
-            ICCCatalogueEntry(id: $0.key, components: $0.value.components, size: UInt64($0.value.content.count), modified: $0.value.modified)
+        lock.withLock {
+            files.sorted { $0.key < $1.key }.map {
+                ICCCatalogueEntry(id: $0.key, components: $0.value.components, size: UInt64($0.value.content.count), modified: $0.value.modified)
+            }
         }
     }
 
@@ -241,7 +338,10 @@ final class FakeCamera: ICCCameraBackend, @unchecked Sendable {
     }
 
     func setHandlers(removed: @escaping @Sendable () -> Void, catalogueChanged: @escaping @Sendable () -> Void) {
-        lock.withLock { self.removed = removed }
+        lock.withLock {
+            self.removed = removed
+            self.catalogueChanged = catalogueChanged
+        }
     }
 
     func plug() {
@@ -254,16 +354,23 @@ final class FakeCamera: ICCCameraBackend, @unchecked Sendable {
         }
     }
 
-    func close() async {}
+    func close() async {
+        quietTask?.cancel()
+        quietTask = nil
+    }
 }
 
 /// Opens `ICCSession`s on the fake, as `ICCDeviceConnector` does on a real phone.
 final class FakeConnector: DeviceConnector {
     let camera: FakeCamera
     let key = DeviceKey(kind: .usb, vendorID: 0x04e8, serial: "R5CYFAKE0001")
+    let catalogueTimeout: TimeInterval
     private let epochs = Mutex<UInt64>(0)
 
-    init(camera: FakeCamera) { self.camera = camera }
+    init(camera: FakeCamera, catalogueTimeout: TimeInterval = 5) {
+        self.camera = camera
+        self.catalogueTimeout = catalogueTimeout
+    }
 
     func session() -> ICCSession {
         let usb = USBDeviceSummary(vendorID: 0x04e8, productID: 0x6860, vendorName: nil, productName: "Galaxy Z Fold7", usbSerial: key.serial,
@@ -277,6 +384,13 @@ final class FakeConnector: DeviceConnector {
 
     func open(_ key: DeviceKey) async throws(DeviceError) -> any DeviceSession {
         guard key == self.key, camera.pluggedIn else { throw .deviceGone }
+        do {
+            try await camera.waitForCatalogue(timeout: .seconds(catalogueTimeout))
+        } catch let error as DeviceError {
+            throw error
+        } catch {
+            throw ICCErrorMapping.deviceError(error, deviceRemoved: !camera.pluggedIn)
+        }
         let session = session()
         try await ICCDeviceConnector.requireMedia(session)
         return session
@@ -374,6 +488,76 @@ private func bytes(_ count: Int, seed: UInt8) -> Data {
         } catch {
             guard case .transient = error else { Issue.record("\(error)"); return }
         }
+    }
+
+    @Test func itemsArrivingInBatchesAfterReadyAreAllListed() async throws {
+        let camera = FakeCamera([:], isReady: false, percent: 0, complete: false, quietPeriod: .milliseconds(40))
+        let connector = FakeConnector(camera: camera, catalogueTimeout: 2)
+
+        let openTask = Task {
+            try await connector.open(connector.key)
+        }
+
+        // Ready signal arrived, but percent is still 0
+        camera.setReady(true)
+        #expect(!camera.isCatalogueComplete)
+
+        // First batch arrives
+        camera.addBatch(["DCIM/Camera/photo1.jpg": bytes(100, seed: 1)], percent: 30)
+        #expect(!camera.isCatalogueComplete)
+
+        // Second batch arrives
+        camera.addBatch(["DCIM/Camera/photo2.jpg": bytes(200, seed: 2)], percent: 70)
+        #expect(!camera.isCatalogueComplete)
+
+        // Third batch arrives with screenshots and percent reaches 100
+        camera.addBatch(["DCIM/Screenshots/shot1.png": bytes(300, seed: 3)], percent: 100)
+
+        // Completes after the quiet period
+        let session = try await openTask.value
+        #expect(camera.isCatalogueComplete)
+
+        var cameraFiles: [RemoteEntry] = []
+        for try await page in session.list("DCIM/Camera", storage: ICCSession.storageID) {
+            cameraFiles += page
+        }
+        #expect(cameraFiles.map(\.name) == ["photo1.jpg", "photo2.jpg"])
+
+        var screenshotFiles: [RemoteEntry] = []
+        for try await page in session.list("DCIM/Screenshots", storage: ICCSession.storageID) {
+            screenshotFiles += page
+        }
+        #expect(screenshotFiles.map(\.name) == ["shot1.png"])
+    }
+
+    @Test func emptyCompleteCatalogueThrowsNoStorageAfterQuietPeriod() async throws {
+        let camera = FakeCamera([:], isReady: true, percent: 100, complete: false, quietPeriod: .milliseconds(30))
+        let connector = FakeConnector(camera: camera, catalogueTimeout: 2)
+
+        #expect(!camera.isCatalogueComplete)
+        await #expect(throws: DeviceError.noStorage) {
+            _ = try await connector.open(connector.key)
+        }
+        #expect(camera.isCatalogueComplete)
+    }
+
+    @Test func percentStuckBelow100AnswersViaTimeoutPath() async throws {
+        let camera = FakeCamera(["DCIM/Camera/stuck.jpg": bytes(100, seed: 4)], isReady: true, percent: 50, complete: false,
+                                quietPeriod: .milliseconds(50))
+        let connector = FakeConnector(camera: camera, catalogueTimeout: 0.1)
+
+        let session = try await connector.open(connector.key)
+        #expect(camera.isCatalogueComplete)
+
+        let entry = try #require(try await session.stat("DCIM/Camera/stuck.jpg", storage: ICCSession.storageID))
+        #expect(entry.size == 100)
+
+        // When more items arrive later, catalogueChanged notifies and updates the listing
+        let changed = Mutex(0)
+        session.onContentChanged = { changed.withLock { $0 += 1 } }
+        camera.addBatch(["DCIM/Camera/late.jpg": bytes(200, seed: 5)])
+        #expect(changed.withLock { $0 } > 0)
+        #expect(try await session.stat("DCIM/Camera/late.jpg", storage: ICCSession.storageID) != nil)
     }
 }
 

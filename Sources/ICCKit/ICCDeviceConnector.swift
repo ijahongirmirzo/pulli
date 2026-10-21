@@ -137,6 +137,10 @@ final class ImageCaptureCamera: ICCCameraBackend, @unchecked Sendable {
         file.requestThumbnailData(options: nil) { data, error in completion(data, error) }
     }
 
+    func waitForCatalogue(timeout: Duration) async throws {
+        _ = try await session.open(catalogTimeout: timeout.timeInterval)
+    }
+
     func setHandlers(removed: @escaping @Sendable () -> Void, catalogueChanged: @escaping @Sendable () -> Void) {
         session.setHandlers(removed: removed, catalogueChanged: catalogueChanged)
     }

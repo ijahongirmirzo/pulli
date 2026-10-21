@@ -154,11 +154,19 @@ public final class ICCCameraSession: NSObject, ICCameraDeviceDelegate, @unchecke
     private var closing = false
     private var onRemoved: (@Sendable () -> Void)?
     private var onCatalogueChanged: (@Sendable () -> Void)?
+    private var didBecomeReady = false
+    private var catalogComplete = false
+    private var quietTimer: DispatchWorkItem?
+    private var overallTimeoutItem: DispatchWorkItem?
+    private var quietPeriod: TimeInterval = 1.5
 
     public init(device: ICCameraDevice) {
         self.device = device
         super.init()
     }
+
+    /// Whether ImageCaptureCore has finished enumerating the complete catalogue.
+    public var isComplete: Bool { lock.withLock { catalogComplete } }
 
     /// `removed` runs when the phone leaves or Image Capture ends the session unasked;
     /// `catalogueChanged` when items are added or removed.
@@ -170,13 +178,31 @@ public final class ICCCameraSession: NSObject, ICCameraDeviceDelegate, @unchecke
     }
 
     /// Opens the session and returns once the catalogue is complete (how long that took).
-    public func open(catalogTimeout: TimeInterval = 60) async throws -> Duration {
-        try await withCheckedThrowingContinuation { cont in
+    ///
+    /// The catalogue is treated as complete when `contentCatalogPercentCompleted == 100`,
+    /// `deviceDidBecomeReady(withCompleteContentCatalog:)` was received, and no items have been added
+    /// for `quietPeriod`. If the device stalls, `catalogTimeout` answers with whatever items have
+    /// been enumerated so far and keeps updating.
+    public func open(catalogTimeout: TimeInterval = 120, quietPeriod: TimeInterval = 1.5) async throws -> Duration {
+        let (alreadyComplete, start) = lock.withLock { () -> (Bool, ContinuousClock.Instant?) in
+            if catalogComplete { return (true, sessionOpenStart) }
+            self.quietPeriod = quietPeriod
+            return (false, nil)
+        }
+        if alreadyComplete {
+            return ContinuousClock.now - (start ?? .now)
+        }
+
+        return try await withCheckedThrowingContinuation { cont in
             let once = OnceContinuation(cont)
             lock.withLock {
                 self.openContinuation = once
                 self.sessionOpenStart = ContinuousClock.now
                 self.closing = false
+                self.didBecomeReady = false
+                self.catalogComplete = false
+                self.quietTimer?.cancel()
+                self.quietTimer = nil
             }
 
             DispatchQueue.main.async {
@@ -184,19 +210,27 @@ public final class ICCCameraSession: NSObject, ICCameraDeviceDelegate, @unchecke
                 self.device.requestOpenSession()
             }
 
-            DispatchQueue.global().asyncAfter(deadline: .now() + catalogTimeout) { [weak self] in
+            let timeoutItem = DispatchWorkItem { [weak self] in
                 guard let self else { return }
-                let waiting = self.lock.withLock { self.openContinuation != nil }
-                if waiting {
-                    once.resume(throwing: ICCError("Timed out waiting for the phone's catalogue after \(Int(catalogTimeout)) s."))
-                }
+                self.finishTimeout()
             }
+            lock.withLock {
+                self.overallTimeoutItem?.cancel()
+                self.overallTimeoutItem = timeoutItem
+            }
+            DispatchQueue.global().asyncAfter(deadline: .now() + catalogTimeout, execute: timeoutItem)
         }
     }
 
     /// Closes the session; gives up waiting for Image Capture's answer after `timeout`.
     public func close(timeout: TimeInterval = 5) async {
-        lock.withLock { closing = true }
+        lock.withLock {
+            closing = true
+            quietTimer?.cancel()
+            quietTimer = nil
+            overallTimeoutItem?.cancel()
+            overallTimeoutItem = nil
+        }
         await withCheckedContinuation { (cont: CheckedContinuation<Void, Never>) in
             let once = OnceContinuation(cont)
             guard device.hasOpenSession else {
@@ -211,8 +245,60 @@ public final class ICCCameraSession: NSObject, ICCameraDeviceDelegate, @unchecke
         }
     }
 
+    private func finishTimeout() {
+        let (once, start) = lock.withLock { () -> (OnceContinuation<Duration>?, ContinuousClock.Instant?) in
+            guard openContinuation != nil else { return (nil, nil) }
+            quietTimer?.cancel()
+            quietTimer = nil
+            overallTimeoutItem = nil
+            catalogComplete = true
+            let continuation = openContinuation
+            openContinuation = nil
+            return (continuation, sessionOpenStart)
+        }
+        once?.resume(returning: ContinuousClock.now - (start ?? .now))
+    }
+
+    private func evaluateCatalogueReadiness(itemsAdded: Bool = false) {
+        guard openContinuation != nil else { return }
+        let percent = device.contentCatalogPercentCompleted
+        let ready = didBecomeReady && percent == 100
+
+        if ready {
+            quietTimer?.cancel()
+            let timer = DispatchWorkItem { [weak self] in
+                guard let self else { return }
+                self.finishIfQuiet()
+            }
+            quietTimer = timer
+            DispatchQueue.global().asyncAfter(deadline: .now() + quietPeriod, execute: timer)
+        } else {
+            quietTimer?.cancel()
+            quietTimer = nil
+        }
+    }
+
+    private func finishIfQuiet() {
+        let (once, start) = lock.withLock { () -> (OnceContinuation<Duration>?, ContinuousClock.Instant?) in
+            guard openContinuation != nil else { return (nil, nil) }
+            guard didBecomeReady, device.contentCatalogPercentCompleted == 100 else { return (nil, nil) }
+            quietTimer = nil
+            overallTimeoutItem?.cancel()
+            overallTimeoutItem = nil
+            catalogComplete = true
+            let continuation = openContinuation
+            openContinuation = nil
+            return (continuation, sessionOpenStart)
+        }
+        once?.resume(returning: ContinuousClock.now - (start ?? .now))
+    }
+
     private func failOpen(_ error: any Error) {
         let once = lock.withLock { () -> OnceContinuation<Duration>? in
+            quietTimer?.cancel()
+            quietTimer = nil
+            overallTimeoutItem?.cancel()
+            overallTimeoutItem = nil
             defer { openContinuation = nil }
             return openContinuation
         }
@@ -222,15 +308,18 @@ public final class ICCCameraSession: NSObject, ICCameraDeviceDelegate, @unchecke
     // MARK: ICCameraDeviceDelegate & ICDeviceDelegate
 
     public func device(_ device: ICDevice, didOpenSessionWithError error: (any Error)?) {
-        if let error { failOpen(error) }
+        if let error {
+            failOpen(error)
+        } else {
+            lock.withLock { evaluateCatalogueReadiness() }
+        }
     }
 
     public func deviceDidBecomeReady(withCompleteContentCatalog device: ICCameraDevice) {
-        let (once, start) = lock.withLock { () -> (OnceContinuation<Duration>?, ContinuousClock.Instant?) in
-            defer { openContinuation = nil }
-            return (openContinuation, sessionOpenStart)
+        lock.withLock {
+            didBecomeReady = true
+            evaluateCatalogueReadiness()
         }
-        once?.resume(returning: ContinuousClock.now - (start ?? .now))
     }
 
     public func device(_ device: ICDevice, didCloseSessionWithError error: (any Error)?) {
@@ -249,7 +338,11 @@ public final class ICCCameraSession: NSObject, ICCameraDeviceDelegate, @unchecke
     }
 
     public func cameraDevice(_ camera: ICCameraDevice, didAdd items: [ICCameraItem]) {
-        lock.withLock { onCatalogueChanged }?()
+        let notify = lock.withLock { () -> (@Sendable () -> Void)? in
+            evaluateCatalogueReadiness(itemsAdded: true)
+            return onCatalogueChanged
+        }
+        notify?()
     }
 
     public func cameraDevice(_ camera: ICCameraDevice, didRemove items: [ICCameraItem]) {
