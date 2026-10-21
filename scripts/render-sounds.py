@@ -133,7 +133,7 @@ write("done", b, 0.5, wet=0.25)
 b = buffer(0.5); tone(b, 330, 0, 0.12, 0.45, "triangle"); tone(b, 330, 0.15, 0.12, 0.4, "triangle"); write("attention", b, 0.3)
 
 # First-launch intro (about 4 s), timed to the animation in IntroView: an airy rise while the
-# logo gathers (0–1.1 s), a warm low note as it lands, then a rising glass arpeggio that blooms
+# logo gathers (0-1.1 s), a warm low note as it lands, then a rising glass arpeggio that blooms
 # into a chord with a shimmer as the name appears.
 b = buffer(4.2)
 swell(b, 0.0, 1.2, low=200, high=3200, level=0.3, seed=11)

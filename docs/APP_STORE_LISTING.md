@@ -3,7 +3,7 @@
 For the App Store edition (bundle id `app.pulli.store`, photos and videos through Apple's
 ImageCaptureCore). Character limits in brackets.
 
-**Name** [30]: `Pulli — Phone Photos to Mac` (27)
+**Name** [30]: `Pulli - Phone Photos to Mac` (27)
 
 **Subtitle** [30]: `Copy photos. Never start over.` (30)
 
@@ -16,7 +16,7 @@ ImageCaptureCore). Character limits in brackets.
 > Pulli waits, then carries on from the exact byte where it stopped.
 
 **Description** [4000]:
-> Pulli copies the photos and videos on your phone to your Mac over a USB cable — and never
+> Pulli copies the photos and videos on your phone to your Mac over a USB cable - and never
 > loses progress. It works with Android phones that offer "Transferring images" over USB.
 >
 > Big copies take a while, and a lot can happen: the cable comes out, the phone locks, the Mac
@@ -31,7 +31,7 @@ ImageCaptureCore). Character limits in brackets.
 > COPIES THAT FINISH
 > • Copies in checked blocks and records each one, so an interruption never costs more than a
 >   few megabytes.
-> • Cable pulled? Pulli waits for the same phone and carries on by itself — in any port.
+> • Cable pulled? Pulli waits for the same phone and carries on by itself - in any port.
 > • Skips photos already on your Mac, even under another name.
 >
 > FITS IN ON YOUR MAC

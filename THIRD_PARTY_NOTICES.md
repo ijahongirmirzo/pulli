@@ -10,7 +10,7 @@ are bundled in the app at `Pulli.app/Contents/Resources/Licenses/`.
 | [Sparkle](https://github.com/sparkle-project/Sparkle) | 2.10.0 | MIT | Automatic updates | Embedded framework (`Contents/Frameworks/Sparkle.framework`) |
 | [GRDB.swift](https://github.com/groue/GRDB.swift) | 7.11.1 | MIT | The transfer journal (SQLite) | Swift package |
 | [swift-argument-parser](https://github.com/apple/swift-argument-parser) | 1.8.2 | Apache 2.0 | `pulli-cli` only (not in the app) | Swift package |
-| [Plus Jakarta Sans](https://github.com/tokotype/PlusJakartaSans) | — | SIL Open Font Licence 1.1 | The app's typeface | Bundled font (`Sources/Pulli/Resources/Fonts`) |
+| [Plus Jakarta Sans](https://github.com/tokotype/PlusJakartaSans) | - | SIL Open Font Licence 1.1 | The app's typeface | Bundled font (`Sources/Pulli/Resources/Fonts`) |
 | [dmgbuild](https://github.com/dmgbuild/dmgbuild) | latest | MIT | Building the disk image (build tool only) | Installed into `build/tools` by `scripts/make-dmg.sh`; not shipped |
 
 ## LGPL (libmtp, libusb)

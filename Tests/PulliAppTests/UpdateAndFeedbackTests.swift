@@ -98,7 +98,7 @@ import Testing
         )
 
         let unwrapped = try! #require(draft)
-        #expect(unwrapped.subject == "Pulli feedback – 0.4.0 (20261015120000)")
+        #expect(unwrapped.subject == "Pulli feedback - 0.4.0 (20261015120000)")
 
         // Body includes diagnostics
         #expect(unwrapped.body.contains("What happened?"))

@@ -33,7 +33,7 @@ import TransferCore
         let reads = Counter()
         // Pull the cable on every 7th read, mid-chunk. Each session then gets the tail-guard read
         // plus 5 data reads: enough to cross one 4 MiB commit. (With every 5th read, no session
-        // ever reaches a commit and no progress is possible — see D-006.)
+        // ever reaches a commit and no progress is possible - see D-006.)
         device.setFaultInjector { point in
             guard case .read = point else { return nil }
             return reads.increment() % 7 == 0 ? .disconnect : nil

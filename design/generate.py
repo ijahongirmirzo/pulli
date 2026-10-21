@@ -488,8 +488,8 @@ def intro_frame(step):
             f'<div style="width: 220px; height: 150px; box-sizing: border-box; padding: 18px; border-radius: 20px; display: flex; flex-direction: column; gap: 8px; {PANEL}">{gem(50, "disc", c, g)}'
             f'<span style="font-size: 15.5px; font-weight: 600;">{t}</span><span style="font-size: 13px; color: rgba(255,255,255,0.75);">{d}</span></div>' for c, g, t, d in items) + "</div>"
         cards += round_button("Get Started", bottom=34).replace("font-size: 20px", "font-size: 16.5px")
-    caption = {1: "0.0 – 1.0 s · light streams in; the airy rise of the intro sound", 2: "1.0 – 2.0 s · the mark lands with a ring of light; the name writes itself, letter by letter",
-               3: "2.5 – 3.4 s · three promises rise in; the round Get Started button blooms with the sparkle"}[step]
+    caption = {1: "0.0 - 1.0 s · light streams in; the airy rise of the intro sound", 2: "1.0 - 2.0 s · the mark lands with a ring of light; the name writes itself, letter by letter",
+               3: "2.5 - 3.4 s · three promises rise in; the round Get Started button blooms with the sparkle"}[step]
     skip = '' if step == 3 else f'<div style="position: absolute; right: 16px; top: 14px;">{pill("Skip", small=True)}</div>'
     return (f'<div style="position: absolute; inset: 0; color: #FFFFFF;">{motes}{ring}{mark}{word}{tagline}{cards}{skip}'
             f'<div style="position: absolute; left: 20px; bottom: 14px; font-size: 12px; color: rgba(255,255,255,0.6);">{caption}</div></div>')
@@ -574,10 +574,10 @@ content = f'''<section style="position: absolute; left: 40px; right: 40px; top: 
 FILES["Busy.dc.html"] = (page("Another app is using the phone", window("myGalaxy", content, selected="phone"), "home"), "Another app has the phone")
 
 # ----------------------------------------------------------------------------- 5 · browse & choose
-rows = [(0, "folder", "Camera", "—", "74 items", "1.83 GB", "mixed", True), (1, "video", "20260917_081927.mp4", "17 Sep 2026, 08:20", "Video", "385.4 MB", "on", False),
+rows = [(0, "folder", "Camera", "-", "74 items", "1.83 GB", "mixed", True), (1, "video", "20260917_081927.mp4", "17 Sep 2026, 08:20", "Video", "385.4 MB", "on", False),
         (1, "video", "20260920_173532.mp4", "20 Sep 2026, 17:36", "Video", "363.3 MB", "on", False), (1, "image", "20260926_161059.jpg", "26 Sep 2026, 16:11", "Photo", "4.2 MB", "on", False),
         (1, "image", "20260926_161031.jpg", "26 Sep 2026, 16:10", "Photo", "3.9 MB", "on", False), (1, "image", "20260926_155434.jpg", "26 Sep 2026, 15:54", "Photo", "4.4 MB", "off", False),
-        (0, "folder", "Screenshots", "—", "212 items", "212 MB", "off", False), (0, "folder", "Restored", "—", "Counting…", "", "off", False)]
+        (0, "folder", "Screenshots", "-", "212 items", "212 MB", "off", False), (0, "folder", "Restored", "-", "Counting…", "", "off", False)]
 row_html = ""
 for depth, kind, name, date, what, size, state, open_ in rows:
     chev = f'<span style="display: flex; color: {T3};">{icon("chevdown" if open_ else "chevron", 13, "currentColor", 2.2)}</span>' if kind == "folder" else '<span style="width: 13px;"></span>'
@@ -955,7 +955,7 @@ notes["features"] = {"x": note_x, "y": notes["row6"]["y"] + 300, "w": 460, "size
                      "text": "Pass 5, new features:\n\u2022 Previews: the phone's own thumbnails (MTP GetThumb, ~40 ms each); Finder icons for other files; drag, \u2318- and \u21e7-click selection; Space opens Quick Look.\n\u2022 Duplicates: files already on the Mac (by content, any name) are marked and left unticked.\n\u2022 Mac \u2192 phone: drop files on a folder, or Add from Mac.\n\u2022 App media: WhatsApp, Telegram and Instagram folders as cards.\n\u2022 Storage map: what fills the phone, as tiles; copy any tile.\n\u2022 Free up space: check every copy against the phone byte for byte, then a clear confirmation, then a summary. The only feature that deletes.\n\u2022 Notifications, desktop widgets, Shortcuts actions, and copies organised by year and month."}
 
 canvas = dict(existing)
-canvas.update({"v": 3, "title": existing.get("title", "Relay — App Design"), "launch": existing.get("launch", {"view": "canvas"}),
+canvas.update({"v": 3, "title": existing.get("title", "Relay - App Design"), "launch": existing.get("launch", {"view": "canvas"}),
                "boards": boards, "order": order, "notes": notes})
 canvas.setdefault("createdOnFiles", {"v": 1, "at": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")})
 canvas.setdefault("pages", [])

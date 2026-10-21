@@ -194,7 +194,7 @@ public struct TransferSupervisor: Sendable {
     }
 }
 
-/// Exponential backoff with jitter: 1, 2, 4 … 60 s, each scaled by 0.5–1.0.
+/// Exponential backoff with jitter: 1, 2, 4 … 60 s, each scaled by 0.5-1.0.
 public struct Backoff: Sendable {
     private var attempt = 0
 

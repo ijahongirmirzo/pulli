@@ -8,7 +8,7 @@ What each tested phone supports and how it behaves. Filled in from `docs/phase1-
 | USB vendor:product | 04e8:6860 | | |
 | libmtp device flags | UNLOAD_DRIVER, LONG_TIMEOUT, PROPLIST_OVERRIDES_OI, SAMSUNG_OFFSET_BUG (no FORCE_RESET_ON_CLOSE) | | |
 | Vendor extensions | microsoft.com 1.0, samsung.com/kies 6.0, samsung.com/devicestatus (no android.com) | | |
-| Advertises 0x95C1 (GetPartialObject64) | yes (also 0x101B, 0x95C2–0x95C5) | | |
+| Advertises 0x95C1 (GetPartialObject64) | yes (also 0x101B, 0x95C2-0x95C5) | | |
 | `readStrategy` detected | partial64 | | |
 | USB serial vs MTP serial | differ (MTP serial is a random 32-hex id) | | |
 | Link speed (cable/port used) | USB 2, 480 Mb/s, both through the monitor's USB 2.1 hub and on a direct Mac port with a Thunderbolt cable (phone reports bcdUSB 0x0210). Spec sheet: USB Type-C 3.2 | | |

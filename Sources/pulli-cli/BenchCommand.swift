@@ -5,7 +5,7 @@ import MTPKit
 
 struct Bench: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
-        abstract: "Measure read throughput per chunk size (the brief's 8–64 MiB experiment).",
+        abstract: "Measure read throughput per chunk size (the brief's 8-64 MiB experiment).",
         discussion: "Reads from the phone only; nothing is written. Use a file of at least 1 GB."
     )
 
