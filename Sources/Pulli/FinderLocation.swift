@@ -36,6 +36,12 @@ enum FinderLocation {
         return try await manager.reset(id: safeID, name: name)
     }
 
+    /// The user-visible root URL in Finder for the phone's domain, retrying briefly while setting up.
+    static func userVisibleURL(deviceID: String) async throws -> URL {
+        let safeID = deviceID.isEmpty ? "device" : deviceID
+        return try await manager.userVisibleURL(for: safeID)
+    }
+
     /// Takes the phone out of Finder and clears its domain settings (its copies on the phone are
     /// never touched).
     static func remove(deviceID: String) async {

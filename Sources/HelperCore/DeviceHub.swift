@@ -29,6 +29,8 @@ public actor DeviceHub: DeviceConnector {
         var lockedRenewals = 0
         /// Incremented when the device reports that its catalogue or contents changed.
         var contentRevision: UInt64 = 0
+        /// Progress while opening (0...100 percent), e.g. ImageCaptureCore catalogue loading.
+        var catalogueProgress: Int? = nil
     }
 
     private let connector: any DeviceConnector
@@ -61,6 +63,11 @@ public actor DeviceHub: DeviceConnector {
         self.pollInterval = pollInterval
         self.idleClose = idleClose
         self.lockedRenewal = lockedRenewal
+        (connector as? any DeviceOpeningProgress)?.setProgressHandler { [weak self] key, percent in
+            Task { [weak self] in
+                await self?.handleOpeningProgress(key: key, percent: percent)
+            }
+        }
     }
 
     public func observe(onChange: @escaping @Sendable (DeviceSnapshot) -> Void, onRemove: @escaping @Sendable (String) -> Void) {
@@ -142,6 +149,9 @@ public actor DeviceHub: DeviceConnector {
             let isNew = entries[key] == nil
             if isNew {
                 entries[key] = Entry(candidate: candidate)
+                if let initial = snapshot(for: key) {
+                    onChange?(initial)
+                }
             } else if let previous = entries[key]?.candidate {
                 entries[key]?.candidate = candidate
                 // The phone came back on the bus: a new USB address (it switched USB mode, say
@@ -174,7 +184,11 @@ public actor DeviceHub: DeviceConnector {
         } else if let app = entry.candidate.heldByApp, entry.session == nil {
             entry.state = .heldBy(appName: app)
         } else if entry.session == nil, uiWantsDevices || entry.leases > 0, ContinuousClock.now >= entry.nextAttempt {
+            entry.state = .connecting
             entries[key] = entry
+            if !isNew, let initial = snapshot(for: key), initial != before {
+                onChange?(initial)
+            }
             _ = try? await ensureOpen(key, force: false)
             guard let updated = entries[key] else { return }
             entry = updated
@@ -254,6 +268,7 @@ public actor DeviceHub: DeviceConnector {
             entry.info = session.info
             entry.storages = storages
             entry.state = storages.isEmpty ? .locked : .ready
+            entry.catalogueProgress = nil
             entry.failures = 0
             entry.lastUsed = .now
             entries[key] = entry
@@ -266,6 +281,7 @@ public actor DeviceHub: DeviceConnector {
             return session
         case .failure(let error):
             guard var entry = entries[key] else { throw error }
+            entry.catalogueProgress = nil
             if case .deviceGone = error {
                 // It dropped off the bus while opening (switching USB mode, or unplugged). It comes
                 // back with a new address and is tried again then: nothing to wait out or log.
@@ -324,6 +340,16 @@ public actor DeviceHub: DeviceConnector {
         }
     }
 
+    func handleOpeningProgress(key: DeviceKey, percent: Int) {
+        guard var entry = entries[key], entry.state == .connecting else { return }
+        guard entry.catalogueProgress != percent else { return }
+        entry.catalogueProgress = percent
+        entries[key] = entry
+        if let snapshot = snapshot(for: key) {
+            onChange?(snapshot)
+        }
+    }
+
     private func snapshot(for key: DeviceKey) -> DeviceSnapshot? {
         guard let entry = entries[key] else { return nil }
         let usb = entry.candidate.usb
@@ -345,7 +371,8 @@ public actor DeviceHub: DeviceConnector {
             resumable: entry.info.map { $0.readStrategy != .whole } ?? true,
             cable: CableAdvisor.advice(link: link, throughHub: usb.throughHub, model: entry.info?.model,
                                        measured: { measuredRate(key, $0) }),
-            contentRevision: entry.contentRevision
+            contentRevision: entry.contentRevision,
+            catalogueProgress: entry.catalogueProgress
         )
     }
 }

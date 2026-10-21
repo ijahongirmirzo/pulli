@@ -72,6 +72,7 @@ extension AppModel {
             defer { driveStatus = nil }
             let fresh = finderLocations[device.id] == nil && finderMounts[device.id] == nil
             guard let root = await phoneFilesRoot(askForApproval: true) else {
+                await recordLog("Could not open \(device.name) in Finder: no root URL", level: 3, kind: "finder_location")
                 if finderLocationDisabled {
                     finderTrouble = nil
                 }
@@ -80,13 +81,27 @@ extension AppModel {
             if finderLocationDisabled {
                 finderTrouble = nil
             }
-            NSWorkspace.shared.open(root)
+            Self.showInFinder(root)
             if fresh { sounds.play(.connect) }
 
             // Verify and repair only for Finder locations, not the WebDAV mount.
             guard finderLocations[device.id] != nil else { return }
+#if !PULLI_APP_STORE
             verifyAndRepairFinderLocation(for: device, root: root)
+#endif
         }
+    }
+
+    /// Opens the phone's folder in Finder. In the App Sandbox the user-visible File Provider URL
+    /// is security-scoped: without starting access, Finder answers "Pulli does not have permission
+    /// to open" it. Access is held a few seconds so Finder can take its own copy of the grant.
+    static func showInFinder(_ root: URL) {
+        let scoped = root.startAccessingSecurityScopedResource()
+        if !NSWorkspace.shared.open(root) {
+            NSWorkspace.shared.activateFileViewerSelecting([root])
+        }
+        guard scoped else { return }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 5) { root.stopAccessingSecurityScopedResource() }
     }
 
     /// Verifies that a Finder location is healthy and repairs it once if fileproviderd broke.
@@ -123,7 +138,7 @@ extension AppModel {
                     await recordLog("Finder location domain disabled", level: 3, kind: "finder_location")
                 } else if repairedStatus == .healthy {
                     await recordLog("Finder location repaired", level: 2, kind: "finder_location")
-                    NSWorkspace.shared.open(newRoot)
+                    Self.showInFinder(newRoot)
                 } else {
                     await recordLog("Finder location still failing", level: 4, kind: "finder_location")
                     finderTrouble = device.id
@@ -158,12 +173,13 @@ extension AppModel {
                 if domain?.userEnabled == false {
                     finderLocationDisabled = true
                     if askForApproval { finderLocationNeedsApproval = true }
-                } else if domain?.userEnabled == true {
+                } else {
                     finderLocationDisabled = false
                     finderLocations[device.id] = url
                     return url
                 }
             } catch {
+                await recordLog("Adding Finder location for \(device.name) failed: \(Self.describe(error))", level: 3, kind: "finder_location")
                 if FinderLocations.FinderLocationHealth.isDomainDisabledError(error) {
                     finderLocationDisabled = true
                 }

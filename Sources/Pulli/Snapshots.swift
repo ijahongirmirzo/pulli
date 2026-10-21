@@ -15,6 +15,7 @@ enum Snapshots {
         try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         let scenarios: [(String, (AppModel) -> Void)] = [
             ("welcome", { $0.state.devices = [:]; $0.selectedDeviceID = nil }),
+            ("opening", { $0.state.devices[phone.id]?.state = .connecting }),
             ("overview", { _ in }),
             ("overview-update", { _ in Updates.shared.available = "0.4.2" }),
             ("overview-connected-note", { $0.connectedNote = "myGalaxy connected · ready to copy" }),
@@ -82,7 +83,10 @@ enum Snapshots {
     /// Screens only the App Store edition has.
     private static var appStoreScenarios: [(String, (AppModel) -> Void)] {
 #if PULLI_APP_STORE
-        [("guide-holder", { $0.state.devices[phone.id]?.state = .notInFileTransferMode; $0.previewHolder = "com.google.drivefs" })]
+        [
+            ("guide-holder", { $0.state.devices[phone.id]?.state = .notInFileTransferMode; $0.previewHolder = "com.google.drivefs" }),
+            ("opening-progress", { $0.state.devices[phone.id]?.state = .connecting; $0.state.devices[phone.id]?.catalogueProgress = 42 }),
+        ]
 #else
         []
 #endif

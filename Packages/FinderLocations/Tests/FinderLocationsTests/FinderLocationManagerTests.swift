@@ -33,4 +33,47 @@ import Testing
         manager.domainStore.remove(domainID.rawValue)
         #expect(manager.domainStore.settings(for: domainID.rawValue) == nil)
     }
+
+    @Test func userVisibleURLRetriesWhenDomainIsStillSettingUp() async throws {
+        let manager = FinderLocationManager(appGroup: "group.test", identifierPrefix: "loc-")
+        let domain = NSFileProviderDomain(identifier: NSFileProviderDomainIdentifier("test"), displayName: "Test")
+        guard let fileProviderManager = NSFileProviderManager(for: domain) else { return }
+
+        let attempts = LockBox(0)
+        let expectedURL = URL(fileURLWithPath: "/tmp/Pulli-Test")
+
+        let url = try await manager.userVisibleRootURL(for: fileProviderManager, retries: 5, delay: .milliseconds(1)) {
+            let count = attempts.increment()
+            if count < 3 {
+                throw CocoaError(.fileNoSuchFile)
+            }
+            return expectedURL
+        }
+
+        #expect(url == expectedURL)
+        #expect(attempts.value == 3)
+    }
+}
+
+/// Simple thread-safe box for test counters.
+private final class LockBox<T>: @unchecked Sendable {
+    private let lock = NSLock()
+    private var stored: T
+
+    init(_ initial: T) {
+        stored = initial
+    }
+
+    var value: T {
+        lock.lock()
+        defer { lock.unlock() }
+        return stored
+    }
+
+    func increment() -> Int where T == Int {
+        lock.lock()
+        defer { lock.unlock() }
+        stored += 1
+        return stored
+    }
 }

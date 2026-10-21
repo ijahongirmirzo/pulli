@@ -60,12 +60,37 @@ struct WelcomeView: View {
 struct OpeningView: View {
     var device: DeviceSnapshot
     @Environment(\.tone) private var tone
+    @Environment(\.isSnapshot) private var isSnapshot
 
     var body: some View {
-        VStack(spacing: 20) {
+        VStack(spacing: 16) {
             PhoneArt(width: 220, palette: .teal, screen: .blank, cable: .plugged)
-            Text("Opening \(device.name)…").font(.pulli(24, .medium))
-            ProgressView().controlSize(.small)
+            VStack(spacing: 6) {
+                Text("Opening \(device.name)…").font(.pulli(24, .medium))
+                Text("Reading the photo list…")
+                    .font(.pulli(14))
+                    .foregroundStyle(tone.t2)
+            }
+            .padding(.top, 24)
+            if let progress = device.catalogueProgress, progress > 0 {
+                let clamped = min(max(progress, 0), 100)
+                VStack(spacing: 6) {
+                    ZStack(alignment: .leading) {
+                        Capsule().fill(tone.track)
+                        Capsule().fill(Color.accent)
+                            .frame(width: max(6, 160 * Double(clamped) / 100))
+                    }
+                    .frame(width: 160, height: 5)
+                    Text("\(clamped)%")
+                        .font(.pulli(12, .medium))
+                        .foregroundStyle(tone.t2)
+                }
+            } else if isSnapshot {
+                // Snapshots cannot draw the system spinner offscreen.
+                GlowDot(color: .accent, size: 8)
+            } else {
+                ProgressView().controlSize(.small)
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }

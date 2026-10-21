@@ -9,7 +9,7 @@ public import Foundation
 /// - `ClientHello` / `HelperHello` never change shape.
 public enum PulliProtocolVersion {
     public static let major: UInt16 = 1
-    public static let minor: UInt16 = 5
+    public static let minor: UInt16 = 6
 
     /// The short marketing version ("0.4.0").
     public static var shortVersion: String {
@@ -132,10 +132,12 @@ public struct DeviceSnapshot: Codable, Sendable, Hashable, Identifiable {
     public var chunkSuggestion: ChunkSuggestion?
     /// Raised when the phone reports that its contents or catalogue changed (1.5).
     public var contentRevision: UInt64?
+    /// How much of the photo list Image Capture has delivered while the phone opens, 0-100 (1.6).
+    public var catalogueProgress: Int?
 
     public init(id: String, name: String, model: String?, manufacturer: String?, link: LinkSpeed, linkBitsPerSecond: UInt64?,
                 state: DeviceState, storages: [StorageSnapshot], resumable: Bool, cable: CableAdvice? = nil,
-                chunkSuggestion: ChunkSuggestion? = nil, contentRevision: UInt64? = nil) {
+                chunkSuggestion: ChunkSuggestion? = nil, contentRevision: UInt64? = nil, catalogueProgress: Int? = nil) {
         self.id = id
         self.name = name
         self.model = model
@@ -148,6 +150,7 @@ public struct DeviceSnapshot: Codable, Sendable, Hashable, Identifiable {
         self.cable = cable
         self.chunkSuggestion = chunkSuggestion
         self.contentRevision = contentRevision
+        self.catalogueProgress = catalogueProgress
     }
 }
 

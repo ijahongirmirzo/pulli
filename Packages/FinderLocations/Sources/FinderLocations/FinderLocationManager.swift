@@ -43,15 +43,54 @@ public struct FinderLocationManager: Sendable {
             domainStore.set(settings, for: domainID.rawValue)
         }
         let domain = NSFileProviderDomain(identifier: domainID, displayName: name)
-        if let existing = try await NSFileProviderManager.domains().first(where: { $0.identifier == domain.identifier }),
-           existing.displayName != name {
-            try await NSFileProviderManager.remove(existing)
+        let domains = (try? await NSFileProviderManager.domains()) ?? []
+        if let existing = domains.first(where: { $0.identifier == domain.identifier }) {
+            if existing.displayName != name {
+                try await NSFileProviderManager.remove(existing)
+                try await NSFileProviderManager.add(domain)
+            }
+        } else {
+            try await NSFileProviderManager.add(domain)
         }
-        try await NSFileProviderManager.add(domain)
         guard let manager = NSFileProviderManager(for: domain) else {
             throw CocoaError(.fileNoSuchFile)
         }
-        return try await manager.getUserVisibleURL(for: .rootContainer)
+        return try await userVisibleRootURL(for: manager)
+    }
+
+    /// Fetches the user-visible root container URL, retrying briefly while macOS sets up the domain.
+    public func userVisibleRootURL(
+        for manager: NSFileProviderManager,
+        retries: Int = 10,
+        delay: Duration = .milliseconds(200),
+        fetch: (@Sendable () async throws -> URL)? = nil
+    ) async throws -> URL {
+        var lastError: (any Error)?
+        for attempt in 1...retries {
+            do {
+                if let fetch {
+                    return try await fetch()
+                } else {
+                    return try await manager.getUserVisibleURL(for: .rootContainer)
+                }
+            } catch {
+                lastError = error
+                if attempt < retries {
+                    try? await Task.sleep(for: delay)
+                }
+            }
+        }
+        throw lastError ?? CocoaError(.fileNoSuchFile)
+    }
+
+    /// Returns the user-visible root folder URL for a domain, retrying briefly if macOS is still setting it up.
+    public func userVisibleURL(for id: String) async throws -> URL {
+        let domainID = identifier(for: id)
+        guard let domain = (try? await NSFileProviderManager.domains())?.first(where: { $0.identifier == domainID }),
+              let manager = NSFileProviderManager(for: domain) else {
+            throw CocoaError(.fileNoSuchFile)
+        }
+        return try await userVisibleRootURL(for: manager)
     }
 
     /// Removes and re-adds a domain to recover when fileproviderd has lost its state,

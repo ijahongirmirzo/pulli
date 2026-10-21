@@ -154,6 +154,7 @@ public final class ICCCameraSession: NSObject, ICCameraDeviceDelegate, @unchecke
     private var closing = false
     private var onRemoved: (@Sendable () -> Void)?
     private var onCatalogueChanged: (@Sendable () -> Void)?
+    private var onProgress: (@Sendable (Int) -> Void)?
     private var didBecomeReady = false
     private var catalogComplete = false
     private var quietTimer: DispatchWorkItem?
@@ -175,6 +176,11 @@ public final class ICCCameraSession: NSObject, ICCameraDeviceDelegate, @unchecke
             onRemoved = removed
             onCatalogueChanged = catalogueChanged
         }
+    }
+
+    /// Sets a callback for catalogue completion progress (0...100).
+    public func setProgressHandler(_ handler: (@Sendable (Int) -> Void)?) {
+        lock.withLock { onProgress = handler }
     }
 
     /// Opens the session and returns once the catalogue is complete (how long that took).
@@ -316,10 +322,12 @@ public final class ICCCameraSession: NSObject, ICCameraDeviceDelegate, @unchecke
     }
 
     public func deviceDidBecomeReady(withCompleteContentCatalog device: ICCameraDevice) {
-        lock.withLock {
+        let progress = lock.withLock { () -> (@Sendable (Int) -> Void)? in
             didBecomeReady = true
             evaluateCatalogueReadiness()
+            return onProgress
         }
+        progress?(100)
     }
 
     public func device(_ device: ICDevice, didCloseSessionWithError error: (any Error)?) {
@@ -338,11 +346,13 @@ public final class ICCCameraSession: NSObject, ICCameraDeviceDelegate, @unchecke
     }
 
     public func cameraDevice(_ camera: ICCameraDevice, didAdd items: [ICCameraItem]) {
-        let notify = lock.withLock { () -> (@Sendable () -> Void)? in
+        let percent = camera.contentCatalogPercentCompleted
+        let (notify, progress) = lock.withLock { () -> ((@Sendable () -> Void)?, (@Sendable (Int) -> Void)?) in
             evaluateCatalogueReadiness(itemsAdded: true)
-            return onCatalogueChanged
+            return (onCatalogueChanged, onProgress)
         }
         notify?()
+        progress?(percent)
     }
 
     public func cameraDevice(_ camera: ICCameraDevice, didRemove items: [ICCameraItem]) {

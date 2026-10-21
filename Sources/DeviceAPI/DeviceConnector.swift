@@ -7,3 +7,8 @@ public protocol DeviceConnector: Sendable {
     /// usual `DeviceError`s (`.noMTPInterface`, `.contended`, …) if it is attached but unusable.
     func open(_ key: DeviceKey) async throws(DeviceError) -> any DeviceSession
 }
+
+/// An optional capability for connectors that take time to open and can report progress (0...100).
+public protocol DeviceOpeningProgress: Sendable {
+    func setProgressHandler(_ handler: (@Sendable (DeviceKey, Int) -> Void)?)
+}

@@ -170,4 +170,94 @@ private struct CountingConnector: DeviceConnector {
         await session.close()
         await hub.stop()
     }
+
+    /// The phone is reported as connecting/opening as soon as it appears, before a slow open or
+    /// catalogue completes, and catalogue progress is forwarded while opening.
+    @Test func phoneReportedAsOpeningBeforeCatalogueCompletes() async throws {
+        let phone = MockDevice(serial: "PROGRESS_PHONE")
+        let connector = ProgressSlowConnector(inner: MockConnector(devices: [phone]))
+        let hub = DeviceHub(connector: connector, watcher: OnePhone(phone: phone), pollInterval: .seconds(60))
+
+        let recordedSnapshots = DeviceHubTestBox<[DeviceSnapshot]>([])
+        await hub.observe(onChange: { snapshot in
+            recordedSnapshots.mutate { $0.append(snapshot) }
+        }, onRemove: { _ in })
+
+        Task { await hub.setUIActive(true) }
+
+        let first = try await waitForHubCondition(timeout: .seconds(2)) {
+            recordedSnapshots.value.first
+        }
+        #expect(first.state == .connecting)
+        #expect(first.catalogueProgress == nil)
+
+        connector.reportProgress(phone.key, percent: 50)
+        let withProgress = try await waitForHubCondition(timeout: .seconds(2)) {
+            recordedSnapshots.value.first(where: { $0.catalogueProgress == 50 })
+        }
+        #expect(withProgress.state == .connecting)
+
+        connector.unblock()
+        let ready = try await waitForHubCondition(timeout: .seconds(2)) {
+            recordedSnapshots.value.first(where: { $0.state == .ready })
+        }
+        #expect(ready.catalogueProgress == nil)
+
+        await hub.stop()
+    }
+}
+
+/// A connector that blocks open until unblocked, and can report opening progress.
+private final class ProgressSlowConnector: DeviceConnector, DeviceOpeningProgress, @unchecked Sendable {
+    let inner: MockConnector
+    let opened = Counter()
+    private let lock = NSLock()
+    private var progressHandler: (@Sendable (DeviceKey, Int) -> Void)?
+    private var unblockContinuation: CheckedContinuation<Void, Never>?
+
+    init(inner: MockConnector) {
+        self.inner = inner
+    }
+
+    func setProgressHandler(_ handler: (@Sendable (DeviceKey, Int) -> Void)?) {
+        lock.withLock { progressHandler = handler }
+    }
+
+    func reportProgress(_ key: DeviceKey, percent: Int) {
+        let handler = lock.withLock { progressHandler }
+        handler?(key, percent)
+    }
+
+    func unblock() {
+        lock.withLock {
+            unblockContinuation?.resume()
+            unblockContinuation = nil
+        }
+    }
+
+    func open(_ key: DeviceKey) async throws(DeviceError) -> any DeviceSession {
+        opened.increment()
+        await withCheckedContinuation { cont in
+            lock.withLock { unblockContinuation = cont }
+        }
+        return try await inner.open(key)
+    }
+}
+
+private final class DeviceHubTestBox<T>: @unchecked Sendable {
+    private let lock = NSLock()
+    private var stored: T
+    init(_ initial: T) { stored = initial }
+    var value: T { lock.withLock { stored } }
+    func mutate(_ body: (inout T) -> Void) { lock.withLock { body(&stored) } }
+}
+
+private func waitForHubCondition<T: Sendable>(timeout: Duration, check: @Sendable () -> T?) async throws -> T {
+    let deadline = ContinuousClock.now + timeout
+    while ContinuousClock.now < deadline {
+        if let value = check() { return value }
+        try? await Task.sleep(for: .milliseconds(20))
+    }
+    if let value = check() { return value }
+    throw CocoaError(.fileNoSuchFile)
 }

@@ -23,7 +23,7 @@ public struct ICCDeviceWatcher: DeviceWatcher {
 
 /// Opens `ICCSession`s through ImageCaptureCore, which goes through macOS's camera service
 /// instead of stopping it, so it works inside the App Sandbox (docs/APP_STORE.md).
-public final class ICCDeviceConnector: DeviceConnector {
+public final class ICCDeviceConnector: DeviceConnector, DeviceOpeningProgress {
     public let browser: ICCDeviceBrowser
     /// The Mac's time zone, for the phone's wall-clock dates (pulli-cli runs in UTC for libmtp).
     public let timeZone: TimeZone
@@ -34,6 +34,7 @@ public final class ICCDeviceConnector: DeviceConnector {
     /// The open session per phone: a new open closes it first, as Image Capture allows one
     /// session per device and process.
     private let live = Mutex<[DeviceKey: WeakSession]>([:])
+    private let progressHandler = Mutex<(@Sendable (DeviceKey, Int) -> Void)?>(nil)
 
     public init(browser: ICCDeviceBrowser = .shared, timeZone: TimeZone = .current, catalogueTimeout: TimeInterval = 120,
                 callTimeout: Duration = .seconds(30)) {
@@ -41,6 +42,11 @@ public final class ICCDeviceConnector: DeviceConnector {
         self.timeZone = timeZone
         self.catalogueTimeout = catalogueTimeout
         self.callTimeout = callTimeout
+    }
+
+    /// Sets a callback for catalogue completion progress (0...100).
+    public func setProgressHandler(_ handler: (@Sendable (DeviceKey, Int) -> Void)?) {
+        progressHandler.withLock { $0 = handler }
     }
 
     /// Throws `.noStorage` when the catalogue is empty: the phone is in "File transfer" mode
@@ -51,6 +57,10 @@ public final class ICCDeviceConnector: DeviceConnector {
         if let previous = live.withLock({ $0.removeValue(forKey: key)?.session }) { await previous.close() }
 
         let backend = ImageCaptureCamera(camera.device)
+        backend.session.setProgressHandler { [weak self] percent in
+            let handler = self?.progressHandler.withLock { $0 }
+            handler?(key, percent)
+        }
         do {
             _ = try await backend.session.open(catalogTimeout: catalogueTimeout)
         } catch {
