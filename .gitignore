@@ -16,3 +16,6 @@ design/project/
 
 # scripts/make-app.sh output
 build/
+
+# Netlify CLI link to the website project
+.netlify/
