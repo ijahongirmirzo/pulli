@@ -119,7 +119,7 @@ cat > "$app/Contents/Info.plist" <<PLIST
         <key>CFBundleURLName</key><string>$app_id</string>
         <key>CFBundleURLSchemes</key><array><string>pulli</string></array>
     </dict></array>
-    <key>NSHumanReadableCopyright</key><string>Pulli. Plus Jakarta Sans © The Plus Jakarta Sans Project Authors (SIL OFL).</string>
+    <key>NSHumanReadableCopyright</key><string>© 2026 Jakhongirmirzo Ibrokhimov. Free software under the GNU GPL v3.</string>
 </dict>
 </plist>
 PLIST
