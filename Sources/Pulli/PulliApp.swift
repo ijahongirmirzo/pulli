@@ -2,6 +2,7 @@ import AppKit
 import PulliProtocol
 import Sparkle
 import SwiftUI
+import UserNotifications
 
 //   Pulli                      real phones (engine in the app, or the background helper)
 //   Pulli --mock               a simulated phone
@@ -234,6 +235,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, SPUUpdaterDelegate {
     @MainActor static let postponer = RelaunchPostponer()
 
     private var updaterController: SPUStandardUpdaterController?
+    private var userDriverDelegate: UpdateDriverDelegate?
 
     static var shouldEnableUpdater: Bool {
         if ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] == "1" { return false }
@@ -258,10 +260,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, SPUUpdaterDelegate {
             InstallLocation.cleanUpOldRelayAppIfNeeded()
             LoginItem.reregisterIfMoved()
             StatusMenu.install()
+            UNUserNotificationCenter.current().delegate = self
             Self.hideDockIconWhenWindowsClose()
             if Self.model?.mock == false { WidgetFeed.restartIfStale() }
             if Self.shouldEnableUpdater {
-                let controller = SPUStandardUpdaterController(startingUpdater: true, updaterDelegate: self, userDriverDelegate: nil)
+                let driverDelegate = UpdateDriverDelegate()
+                self.userDriverDelegate = driverDelegate
+                let controller = SPUStandardUpdaterController(startingUpdater: true, updaterDelegate: self, userDriverDelegate: driverDelegate)
                 self.updaterController = controller
                 Self.updaterController = controller
             }
@@ -351,5 +356,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate, SPUUpdaterDelegate {
             }
             return Self.postponer.handlePostpone(hasActiveCopies: active, installHandler: installHandler)
         }
+    }
+}
+
+// MARK: - UNUserNotificationCenterDelegate
+
+extension AppDelegate: @MainActor UNUserNotificationCenterDelegate {
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        didReceive response: UNNotificationResponse,
+        withCompletionHandler completionHandler: @escaping () -> Void
+    ) {
+        if response.actionIdentifier == UNNotificationDefaultActionIdentifier {
+            let identifier = response.notification.request.identifier
+            if identifier.hasPrefix("update-") || response.notification.request.content.userInfo["action"] as? String == "installUpdate" {
+                Updates.shared.install()
+            }
+        }
+        completionHandler()
     }
 }

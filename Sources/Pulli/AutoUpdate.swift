@@ -9,6 +9,69 @@ import Sparkle
 final class Updates {
     static let shared = Updates()
     var controller: SPUStandardUpdaterController?
+    var available: String?
+
+    /// Brings Pulli forward and presents Sparkle's update window for the available update.
+    func install() {
+        NSApplication.shared.activate()
+        controller?.checkForUpdates(nil)
+    }
+}
+
+/// Sparkle user-driver delegate: quiet, gentle update notices instead of unexpected pop-up windows.
+@MainActor
+final class UpdateDriverDelegate: NSObject {
+    private let updates: Updates
+    private let notify: (String) -> Void
+
+    init(
+        updates: Updates = .shared,
+        notify: @escaping (String) -> Void = { Notifier.postUpdateAvailable(version: $0) }
+    ) {
+        self.updates = updates
+        self.notify = notify
+        super.init()
+    }
+
+    var supportsGentleScheduledUpdateReminders: Bool { true }
+
+    // MARK: - Testable seam
+
+    /// Sparkle shows its window only when it would come up in immediate focus; otherwise Pulli shows its own notice.
+    func shouldHandleScheduledUpdate(immediateFocus: Bool) -> Bool {
+        immediateFocus
+    }
+
+    /// When Sparkle will not show its window, record the available version for Pulli's notice and notify the user once.
+    func recordAvailableUpdate(sparkleHandles: Bool, version: String) {
+        guard !sparkleHandles else { return }
+        updates.available = version
+        notify(version)
+    }
+
+    /// Clears the notice once the user gave attention to the update or finished the session.
+    func dismissNotice() {
+        updates.available = nil
+        Notifier.removeUpdateNotification()
+    }
+}
+
+extension UpdateDriverDelegate: @MainActor SPUStandardUserDriverDelegate {
+    func standardUserDriverShouldHandleShowingScheduledUpdate(_ update: SUAppcastItem, andInImmediateFocus immediateFocus: Bool) -> Bool {
+        shouldHandleScheduledUpdate(immediateFocus: immediateFocus)
+    }
+
+    func standardUserDriverWillHandleShowingUpdate(_ handleShowingUpdate: Bool, forUpdate update: SUAppcastItem, state: SPUUserUpdateState) {
+        recordAvailableUpdate(sparkleHandles: handleShowingUpdate, version: update.displayVersionString)
+    }
+
+    func standardUserDriverDidReceiveUserAttention(forUpdate update: SUAppcastItem) {
+        dismissNotice()
+    }
+
+    func standardUserDriverWillFinishUpdateSession() {
+        dismissNotice()
+    }
 }
 
 /// Manages postponements of Sparkle updates while transfers are running.

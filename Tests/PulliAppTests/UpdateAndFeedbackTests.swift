@@ -222,4 +222,49 @@ import Testing
         #expect(!postponer.isPostponed)
         #expect(!installHandlerCalled)
     }
+
+    // MARK: - Gentle Update Driver Delegate
+
+    @MainActor
+    @Test func delegateSupportsGentleScheduledReminders() {
+        let delegate = UpdateDriverDelegate()
+        #expect(delegate.supportsGentleScheduledUpdateReminders)
+    }
+
+    @MainActor
+    @Test func delegateShowsSparkleOnlyInImmediateFocus() {
+        let delegate = UpdateDriverDelegate()
+        // Immediate focus: user just checked or system was ready to bring Sparkle in front
+        #expect(delegate.shouldHandleScheduledUpdate(immediateFocus: true))
+        // Background check: Pulli handles the update quietly instead of a pop-up window
+        #expect(!delegate.shouldHandleScheduledUpdate(immediateFocus: false))
+    }
+
+    @MainActor
+    @Test func backgroundUpdateSetsAvailableVersionAndNotifies() {
+        let updates = Updates()
+        var notifiedVersion: String?
+        let delegate = UpdateDriverDelegate(updates: updates, notify: { notifiedVersion = $0 })
+
+        // When Sparkle handles showing the update, Pulli's notice is not shown
+        delegate.recordAvailableUpdate(sparkleHandles: true, version: "0.4.2")
+        #expect(updates.available == nil)
+        #expect(notifiedVersion == nil)
+
+        // When Sparkle will not show it, Pulli sets available and triggers a notification
+        delegate.recordAvailableUpdate(sparkleHandles: false, version: "0.4.2")
+        #expect(updates.available == "0.4.2")
+        #expect(notifiedVersion == "0.4.2")
+
+        // Dismissing the notice clears available
+        delegate.dismissNotice()
+        #expect(updates.available == nil)
+    }
+
+    @MainActor
+    @Test func updatesInstallBringsAppForwardWithoutCrashWhenNoController() {
+        let updates = Updates()
+        #expect(updates.available == nil)
+        updates.install()
+    }
 }
