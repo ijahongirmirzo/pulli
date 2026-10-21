@@ -54,9 +54,9 @@ ImageCaptureCore). Character limits in brackets.
 
 **Support URL:** https://github.com/ijahongirmirzo/pulli/issues
 
-**Marketing URL:** https://github.com/ijahongirmirzo/pulli
+**Marketing URL:** https://getpulli.com
 
-**Privacy policy URL:** https://github.com/ijahongirmirzo/pulli/blob/main/docs/PRIVACY.md
+**Privacy policy URL:** https://getpulli.com/privacy.html
 
 **App Privacy (nutrition label):** Data Not Collected.
 

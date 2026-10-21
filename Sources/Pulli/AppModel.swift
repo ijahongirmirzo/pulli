@@ -115,6 +115,7 @@ final class AppModel {
     /// When each phone last disappeared (a mode switch re-attaches it: no second chime).
     @ObservationIgnored private var recentlyGone: [String: Date] = [:]
     var showingCableHelp = false
+    var showingPhoneHelp = false
     /// The storage map is showing (phone section).
     var showingStorageMap = false
     var storageScan: StorageScan?
@@ -139,6 +140,8 @@ final class AppModel {
     var finderLocations: [String: URL] = [:]
     /// A phone whose Finder location failed its check and repair, showing the fallback note.
     var finderTrouble: String?
+    /// Pulli's File Provider extension is switched off in System Settings.
+    var finderLocationDisabled = false
     /// Phones whose Finder location has already undergone an automatic repair during this run.
     @ObservationIgnored var repairedPhones: Set<String> = []
     /// Pulli needs approval in System Settings › Login Items & Extensions › File Providers.
@@ -375,6 +378,34 @@ final class AppModel {
     /// Asks the helper to prepare for an update and exit cleanly.
     func prepareForUpdate() async {
         _ = try? await client?.send(.prepareForUpdate)
+    }
+
+    /// Opens the File Providers settings pane in System Settings, falling back to Login Items.
+    func openFileProviderSettings() {
+        if let url = URL(string: "x-apple.systempreferences:com.apple.LoginItems-Settings.extension"),
+           NSWorkspace.shared.open(url) {
+            return
+        }
+        if let fallback = URL(string: "x-apple.systempreferences:com.apple.LoginItems-Settings") {
+            NSWorkspace.shared.open(fallback)
+        }
+    }
+
+    /// Re-checks if Pulli's Finder extension has been switched on in System Settings.
+    func recheckFinderLocationStatus() async {
+        guard finderLocationDisabled else { return }
+        let enabled = await FinderLocation.isExtensionEnabled()
+        if enabled {
+            finderLocationDisabled = false
+            if let device, device.state == .ready {
+                _ = await phoneFilesRoot(askForApproval: false)
+            }
+        }
+    }
+
+    /// Retries opening attached phones (resets backoff timer and triggers a fresh probe).
+    func retryOpening() async {
+        _ = try? await client?.send(.setWatchingDevices(true))
     }
 
     // MARK: State

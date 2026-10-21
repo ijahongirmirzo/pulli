@@ -6,6 +6,29 @@
         <description>Most recent updates to Pulli.</description>
         <language>en</language>
         <item>
+            <title>Version 0.4.2</title>
+            <sparkle:version>20261021154247</sparkle:version>
+            <sparkle:shortVersionString>0.4.2</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
+            <pubDate>Wed, 21 Oct 2026 10:44:34 +0000</pubDate>
+            <description><![CDATA[
+<p>Proper menus and a quieter way to learn about updates.</p>
+<ul>
+<li><b>Menus that work.</b> File, Edit, View, Go, Window and Help now hold Pulli&#x27;s own commands with their shortcuts: copy new photos, browse the phone, open it in Finder, switch views and sorting, jump to Camera or Screenshots, and more. Copy, Paste and Select All work in the phone browser too.</li>
+<li><b>A calm update notice.</b> When a new version is out, Pulli shows an Install Update row in the menu bar panel, a small dot on the menu bar icon and a pill in the sidebar, with one notification per version, instead of a pop-up window. Check for Updates is in the Pulli and Help menus.</li>
+<li><b>Tidier About window.</b> It now shows Pulli&#x27;s own copyright line; the font credit stays in the bundled notices.</li>
+</ul>
+<p><b>Which Macs:</b> every Mac with Apple silicon - an M1 chip or newer - running macOS 26 Tahoe or later. Intel Macs are not supported.</p>
+<p><b>Install or update:</b> Pulli updates itself. New here? Open the disk image and drag Pulli to Applications, or use Homebrew: `brew install --cask ijahongirmirzo/tap/pulli`</p>
+            ]]></description>
+            <enclosure
+                url="https://github.com/ijahongirmirzo/pulli/releases/download/v0.4.2/Pulli-0.4.2.dmg"
+                length="18996710"
+                type="application/octet-stream"
+                sparkle:edSignature="A+T8FDyQ+uGQ1vG30T8PihauJTLSCQbFzHGxE2Fke625KkBAtmTi/bCPBKdbK1lMcJs6DNL8Sw574Qf1gYqVDA==" />
+        </item>
+
+        <item>
             <title>Version 0.4.1</title>
             <sparkle:version>20261017225024</sparkle:version>
             <sparkle:shortVersionString>0.4.1</sparkle:shortVersionString>

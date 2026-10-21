@@ -33,6 +33,10 @@ fi
 # What people download: Pulli-<version>.dmg under the tag v<version>; the build number stays inside.
 dmg="build/Pulli-${short_version}.dmg"
 cp "$built" "$dmg"
+# The same disk image under a fixed name, so .../releases/latest/download/Pulli.dmg (behind
+# getpulli.com/download) always gives the newest version.
+latest_dmg="build/Pulli.dmg"
+cp "$built" "$latest_dmg"
 if gh release view "v${short_version}" --repo ijahongirmirzo/pulli >/dev/null 2>&1; then
     echo "Error: v${short_version} is already released. Raise short_version in scripts/make-app.sh first." >&2
     exit 1
@@ -153,7 +157,7 @@ PY
 tag="v${short_version}"
 title="Pulli ${short_version}"
 
-gh_cmd="gh release create \"$tag\" \"$dmg\" --repo ijahongirmirzo/pulli --title \"$title\" --notes-file \"$release_notes_file\""
+gh_cmd="gh release create \"$tag\" \"$dmg\" \"$latest_dmg\" --repo ijahongirmirzo/pulli --title \"$title\" --notes-file \"$release_notes_file\""
 git_cmd="git -C \"$releases_dir\" add appcast.xml && git -C \"$releases_dir\" commit -m \"Release $tag\" && git -C \"$releases_dir\" push origin main"
 
 if $publish; then

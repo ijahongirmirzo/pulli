@@ -1,0 +1,332 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pulli - Android file transfer for Mac, done right</title>
+<meta name="description" content="Pulli is the free, open-source app for your Android phone and your Mac. Browse the phone like Finder, copy photos and files both ways, free up space - and if the cable comes out, it carries on where it stopped.">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#eaecf7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#1a1c27" media="(prefers-color-scheme: dark)">
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Pulli - Android file transfer for Mac, done right">
+<meta property="og:description" content="Browse your Android phone like Finder, copy photos and files both ways, and never lose progress. Free and open source.">
+<meta property="og:image" content="{{SITE_URL}}/images/social-preview.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="preload" href="fonts/PlusJakartaSans.woff" as="font" type="font/woff" crossorigin>
+<link rel="stylesheet" href="style.css">
+<script>document.documentElement.classList.add("js")</script>
+</head>
+<body>
+
+<header class="nav" id="nav">
+  <div class="wrap">
+    <a class="brand" href="./"><img src="favicon.png" alt="" width="30" height="30">Pulli</a>
+    <nav class="nav-links" aria-label="Sections">
+      <a href="#features">Features</a>
+      <a href="#never-starts-over">Reliability</a>
+      <a href="#open-source">Open source</a>
+      <a href="#get-started">Get started</a>
+    </nav>
+    <a class="nav-cta" href="/download">Download</a>
+  </div>
+</header>
+
+<main>
+
+<section class="hero">
+  <div class="wrap">
+    <img class="hero-icon" src="images/pulli-icon.png" alt="Pulli app icon: a blue pulley shaped like the letter p, with a cord ending in a down arrow" width="112" height="112">
+    <div class="eyebrow">Free · open source · native for Mac</div>
+    <h1>Android to Mac. <span class="soft">And back again.</span></h1>
+    <p class="lead">The complete app for your Android phone and your Mac. Browse it like Finder, copy photos and files both ways, and free up space - and if the cable comes out halfway, Pulli carries on from where it stopped.</p>
+
+    <a class="download" href="/download">
+      <span class="dl-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11M6.5 10.5 12 16l5.5-5.5M5 20h14"/></svg></span>
+      <span><strong>Download for Mac</strong><small>Free · macOS 26 or later · Apple silicon</small></span>
+    </a>
+    <p class="hero-note">Version {{VERSION}} · notarised by Apple · updates itself · <a href="https://github.com/ijahongirmirzo/pulli">source on GitHub</a></p>
+
+    <div class="brew">
+      <span>or with Homebrew</span>
+      <code id="brew-cmd">brew install --cask ijahongirmirzo/tap/pulli</code>
+      <button class="copy-btn" type="button" data-copy="brew-cmd">Copy</button>
+    </div>
+
+    <div class="showcase">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="images/pulli-in-action-dark.webp">
+        <img src="images/pulli-in-action-light.webp" width="1100" height="745" alt="Pulli in action: the phone is found, its photos are ready, the copy runs, the cable is pulled at 62 percent, Pulli waits, then carries on by itself to Copy complete">
+      </picture>
+    </div>
+  </div>
+</section>
+
+<section class="everything" id="features">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <p class="kicker">Everything in one app</p>
+      <h2>All you do with your phone on a Mac.</h2>
+      <p>No app to install on the phone, no account, nothing to set up. Plug it in with a cable and Pulli shows what's on it within seconds.</p>
+    </div>
+    <div class="caps">
+      <div class="cap reveal">
+        <div class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5M4 20h16"/></svg></div>
+        <h3>Phone to Mac</h3>
+        <p>Photos, videos and any folder. One click copies just what's new since last time.</p>
+      </div>
+      <div class="cap reveal">
+        <div class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3M7 8l5-5 5 5M4 20h16"/></svg></div>
+        <h3>Mac to phone</h3>
+        <p>Drag files onto the phone, click Add…, or paste with ⌘V - even straight from Safari or Telegram.</p>
+      </div>
+      <div class="cap reveal">
+        <div class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></div>
+        <h3>Browse like Finder</h3>
+        <p>Icons or list, sorting, photo previews, and Quick Look with Space.</p>
+      </div>
+      <div class="cap reveal">
+        <div class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2.5"/><path d="M9 4v16"/></svg></div>
+        <h3>In Finder's sidebar</h3>
+        <p>Your phone appears under Locations, right next to your Mac's own drives.</p>
+      </div>
+      <div class="cap reveal">
+        <div class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg></div>
+        <h3>Never starts over</h3>
+        <p>Cable out, Mac asleep, even a crash: copies continue from the exact byte.</p>
+      </div>
+      <div class="cap reveal">
+        <div class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg></div>
+        <h3>Free up space</h3>
+        <p>Delete copied photos from the phone - only after checking every byte on your Mac.</p>
+      </div>
+      <div class="cap reveal">
+        <div class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="10" height="18" rx="2"/><rect x="15" y="3" width="6" height="8" rx="2"/><rect x="15" y="13" width="6" height="8" rx="2"/></svg></div>
+        <h3>Storage map</h3>
+        <p>See what fills the phone, including WhatsApp, Telegram, Instagram and Viber media.</p>
+      </div>
+      <div class="cap reveal">
+        <div class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="4"/><path d="M3 8h18"/></svg></div>
+        <h3>Menu bar and widgets</h3>
+        <p>Progress at a glance, one-click copies, notifications and Shortcuts actions.</p>
+      </div>
+    </div>
+
+    <div class="features">
+      <div class="feature reveal">
+        <div class="feature-text">
+          <h3>Your phone, like any folder on your Mac</h3>
+          <p>Browse in list or icons, sort, preview photos and press Space for Quick Look. Drag and drop works both ways, and so do ⌘C and ⌘V with Finder. Prefer Finder? Your phone is in its sidebar too.</p>
+          <div class="tags"><span>Quick Look</span><span>Drag and drop both ways</span><span>⌘C / ⌘V</span><span>Finder sidebar</span></div>
+        </div>
+        <picture>
+          <source media="(prefers-color-scheme: dark)" srcset="images/browse-dark.jpg">
+          <img src="images/browse-light.jpg" width="1600" height="1092" loading="lazy" alt="Browsing the phone's DCIM Camera folder as a list, with photos selected to copy">
+        </picture>
+      </div>
+
+      <div class="feature reveal">
+        <div class="feature-text">
+          <h3>Copy what's new, skip what you have</h3>
+          <p>Pulli knows what you copied last time and what is already on your Mac - even under another name - so one click brings over only new photos. Every file is checked as it's written, with speed and time left in plain view.</p>
+        </div>
+        <picture>
+          <source media="(prefers-color-scheme: dark)" srcset="images/copying-dark.jpg">
+          <img src="images/copying-light.jpg" width="1600" height="1092" loading="lazy" alt="Copying 74 photos from myGalaxy at 31 MB/s, 23 seconds left">
+        </picture>
+      </div>
+
+      <div class="feature reveal">
+        <div class="feature-text">
+          <h3>See what fills your phone</h3>
+          <p>A storage map shows where the space goes at a glance, and Pulli finds the photos and videos hiding in WhatsApp, Telegram, Instagram and Viber.</p>
+        </div>
+        <picture>
+          <source media="(prefers-color-scheme: dark)" srcset="images/storage-map-dark.jpg">
+          <img src="images/storage-map-light.jpg" width="1600" height="1092" loading="lazy" alt="Storage map of the phone: DCIM 44.6 GB, Android apps 27.3 GB, Movies, Telegram and more">
+        </picture>
+      </div>
+
+      <div class="feature reveal">
+        <div class="feature-text">
+          <h3>Free up space, safely</h3>
+          <p>After a copy, Pulli can delete the originals from the phone - but only after checking each copy on your Mac against the phone, byte for byte.</p>
+        </div>
+        <picture>
+          <source media="(prefers-color-scheme: dark)" srcset="images/done-dark.jpg">
+          <img src="images/done-light.jpg" width="1600" height="1092" loading="lazy" alt="Copy complete: 72 files copied, 2 needing attention, with an offer to free up 1.79 GB on the phone">
+        </picture>
+      </div>
+
+      <div class="feature reveal">
+        <div class="feature-text">
+          <h3>Fits in on your Mac</h3>
+          <p>A menu bar item and desktop widgets show progress at a glance and copy new photos in one click. Close the window and Pulli keeps working. There's a plug-in chime, notifications, Shortcuts actions, and a cable check that tells you when another cable or port would copy faster.</p>
+          <div class="tags"><span>Menu bar</span><span>Widgets</span><span>Notifications</span><span>Shortcuts</span><span>Cable check</span></div>
+        </div>
+        <picture>
+          <source media="(prefers-color-scheme: dark)" srcset="images/menu-bar-and-widgets-dark.jpg">
+          <img src="images/menu-bar-and-widgets-light.jpg" width="1600" height="1092" loading="lazy" alt="Pulli's menu bar panel showing two copies, and two desktop widgets: phone ready with a Copy 9 new button, and a copy at 62 percent">
+        </picture>
+      </div>
+
+      <div class="feature reveal">
+        <div class="feature-text">
+          <h3>History, on your terms</h3>
+          <p>Every copy is listed with what went where. Clear History forgets it all - copies, the activity log and saved previews - whenever you like.</p>
+        </div>
+        <picture>
+          <source media="(prefers-color-scheme: dark)" srcset="images/history-dark.jpg">
+          <img src="images/history-light.jpg" width="1600" height="1092" loading="lazy" alt="History of past copies with their sizes and status">
+        </picture>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="big" id="never-starts-over">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <p class="kicker">Built in: copies that finish</p>
+      <h2>Pull the cable. Pulli carries on.</h2>
+      <p>Big copies take a while, and over USB a lot can happen. Wherever a copy stops, Pulli continues from that exact byte - even halfway through a 4&nbsp;GB video.</p>
+    </div>
+
+    <div class="strip-card reveal" aria-label="Illustration: a video being copied in 4 MB blocks; the cable is pulled, Pulli waits, then continues from the last saved block">
+      <div class="strip-top">
+        <div class="strip-file">20260917_081927.mp4 <small id="strip-size">0 MB of 385 MB</small></div>
+        <div class="strip-status" id="strip-status" data-state="copying" aria-live="off"><span class="dot"></span><span id="strip-text">Copying</span></div>
+      </div>
+      <div class="blocks" id="blocks"></div>
+      <div class="strip-legend">
+        <span><b style="background:var(--accent)"></b>Saved 4 MB block</span>
+        <span><b style="background:var(--warm-ink)"></b>Where the cable came out</span>
+        <span><b style="background:var(--line)"></b>Still on the phone</span>
+      </div>
+    </div>
+
+    <div class="cases">
+      <div class="case reveal"><p class="if">The cable is pulled</p><p><strong>Waits for the same phone</strong>, then continues by itself when it's back - in any port.</p></div>
+      <div class="case reveal"><p class="if">The phone locks, or its USB mode changes</p><p><strong>Tells you what to tap</strong>, and continues as soon as the phone allows it.</p></div>
+      <div class="case reveal"><p class="if">The Mac sleeps, or you close the lid</p><p><strong>Keeps the Mac awake</strong> while copying. If it sleeps anyway, continues when it wakes.</p></div>
+      <div class="case reveal"><p class="if">Pulli is quit, crashes or is force-quit</p><p><strong>Continues from the last saved block</strong> the next time it runs.</p></div>
+      <div class="case reveal"><p class="if">The Mac restarts</p><p><strong>Picks up the unfinished copy</strong> when Pulli opens again - at login, if you let it.</p></div>
+      <div class="case reveal"><p class="if">The disk fills up</p><p><strong>Pauses with a clear message</strong>, and continues once there is room.</p></div>
+    </div>
+
+    <div class="how">
+      <div class="reveal">
+        <h3>How it works</h3>
+        <ol>
+          <li><strong>Small, saved blocks</strong>Pulli copies in 4 MB blocks. Each block is written to disk before it's recorded in Pulli's copy journal - so the journal never claims more than is really on your Mac.</li>
+          <li><strong>Nothing read twice</strong>On resume, Pulli checks the file on the phone hasn't changed, then continues from the last saved block.</li>
+          <li><strong>Never a half file</strong>A file keeps a <code>.part</code> name until it's complete, and every file gets a SHA-256 fingerprint as it's copied.</li>
+        </ol>
+      </div>
+      <div class="tested reveal">
+        <p class="label">Tested on a real phone · Samsung Galaxy Z Fold7 over USB</p>
+        <div class="stats">
+          <div class="stat"><b>5.6 GB</b><span>camera folder, 166 files</span></div>
+          <div class="stat"><b>2×</b><span>force-killed, once mid-video</span></div>
+          <div class="stat"><b>1.39 GB</b><span>video killed at 318 MB, then resumed</span></div>
+          <div class="stat"><b>100%</b><span>files byte-identical to the phone's</span></div>
+        </div>
+        <p>The engine also runs through a simulated phone that fails on purpose - cable pulls, stalls, short reads, power loss - and every copy must come out byte-identical.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="oss" id="open-source">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <p class="kicker">Open source</p>
+      <h2>Free, open, and on your side.</h2>
+      <p>Pulli is free software under the GPL. Every line is on GitHub - no account, no ads, no analytics, no upsell. Your files go straight from the phone to the folder you choose.</p>
+    </div>
+    <div class="oss-grid">
+      <a class="oss-card reveal" href="https://github.com/ijahongirmirzo/pulli">
+        <div class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 7l-5 5 5 5M16 7l5 5-5 5M14 4l-4 16"/></svg></div>
+        <h3>Read the code</h3>
+        <p>See exactly what Pulli does with your phone. Built in Swift on libmtp and libusb.</p>
+        <span class="more">github.com/ijahongirmirzo/pulli ›</span>
+      </a>
+      <div class="oss-card reveal">
+        <div class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.6 2.6-2.4-.6-.6-2.4z"/></svg></div>
+        <h3>Build it yourself</h3>
+<pre><code>Vendor/build-deps.sh
+swift build
+scripts/make-app.sh</code></pre>
+      </div>
+      <a class="oss-card reveal" href="https://github.com/ijahongirmirzo/pulli/issues">
+        <div class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/></svg></div>
+        <h3>Shape what's next</h3>
+        <p>Report a bug or suggest an idea. Your phone model and Pulli's activity log help most.</p>
+        <span class="more">Open an issue ›</span>
+      </a>
+    </div>
+    <ul class="privacy-list reveal">
+      <li>No account</li><li>No analytics</li><li>No tracking</li><li>Nothing sent anywhere</li><li>GPL-3.0</li>
+    </ul>
+    <p class="oss-foot reveal"><a href="privacy.html">Read the privacy policy ›</a></p>
+  </div>
+</section>
+
+<section class="start" id="get-started">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <p class="kicker">Get started</p>
+      <h2>Up and running in a minute.</h2>
+    </div>
+    <div class="steps">
+      <div class="step reveal"><h3>Install Pulli</h3><p><a href="/download">Download Pulli</a>, open the disk image and drag Pulli to Applications. Or use Homebrew.</p></div>
+      <div class="step reveal"><h3>Plug in your phone</h3><p>Use a USB cable that carries data, and unlock the phone.</p></div>
+      <div class="step reveal"><h3>Choose File transfer</h3><p>On the phone, tap the USB notification and choose <b>File transfer</b>. Tap <b>Allow</b> if it asks.</p></div>
+    </div>
+    <div class="reqs">
+      <div class="req reveal">
+        <h3>Which Macs</h3>
+        <p>Every Mac with Apple silicon - M1 or newer - running macOS 26 Tahoe or later. Intel Macs are not supported. To check: Apple menu › About This Mac shows “Chip: Apple M…”.</p>
+      </div>
+      <div class="req reveal">
+        <h3>Which phones</h3>
+        <p>Any Android phone with a USB cable that carries data and offers “File transfer”. Tested with Samsung Galaxy and Lenovo phones.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="final">
+  <div class="wrap">
+    <div class="card reveal">
+      <h2>Your phone and your Mac, finally friends.</h2>
+      <p>Free and open source. Every copy finishes.</p>
+      <a class="download" href="/download">
+        <span class="dl-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11M6.5 10.5 12 16l5.5-5.5M5 20h14"/></svg></span>
+        <span><strong>Download for Mac</strong><small>Free · macOS 26 or later · Apple silicon</small></span>
+      </a>
+      <p class="hero-note">Or read the code on <a href="https://github.com/ijahongirmirzo/pulli">GitHub</a></p>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <a class="brand" href="./"><img src="favicon.png" alt="" width="24" height="24">Pulli</a>
+    <nav aria-label="Footer">
+      <a href="https://github.com/ijahongirmirzo/pulli">Source code</a>
+      <a href="https://github.com/ijahongirmirzo/pulli/releases">Release notes</a>
+      <a href="https://github.com/ijahongirmirzo/pulli/issues">Support</a>
+      <a href="privacy.html">Privacy</a>
+    </nav>
+    <span>© 2026 Jakhongirmirzo Ibrokhimov · GPL-3.0</span>
+  </div>
+</footer>
+
+<script src="site.js" defer></script>
+</body>
+</html>

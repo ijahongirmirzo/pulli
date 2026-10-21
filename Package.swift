@@ -23,6 +23,7 @@ if isAppStore {
 }
 
 var pulliDependencies: [Target.Dependency] = [
+    "DeviceAPI",
     "PulliClient", "PulliProtocol", "PulliHost", "WorkerIPC", "PulliWidgetViews",
     .product(name: "FinderLocations", package: "FinderLocations"),
     .product(name: "RemoteFiles", package: "FinderLocations"),

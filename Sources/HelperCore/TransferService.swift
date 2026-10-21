@@ -449,7 +449,7 @@ actor TransferService {
         case .disconnected: .phoneDisconnected
         case .locked: .phoneLocked
         case .notInFileTransferMode: .notInFileTransferMode
-        case .heldBy(let holder): .heldBy(appName: holder.name)
+        case .heldBy(let holder): .heldBy(appName: CameraClientApps.sanitizedHolderName(holder.name))
         case .destination(.noSpace): .destinationFull
         case .destination(let error): .destinationUnavailable(detail: error.description)
         case .retrying(let after, let detail): .retrying(secondsLeft: Int(after.components.seconds), detail: detail)

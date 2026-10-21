@@ -27,8 +27,17 @@ enum FinderLocationHealth: Sendable {
         timeout: Duration = .seconds(8),
         list: (@Sendable (URL) throws -> [URL])? = nil
     ) async -> Bool {
-        if list == nil, shouldFakeError() { return false }
-        return await FinderLocations.FinderLocationHealth.check(
+        await checkStatus(root: root, timeout: timeout, list: list) == .healthy
+    }
+
+    /// Checks the health of a Finder location, distinguishing a disabled domain from other failures.
+    static func checkStatus(
+        root: URL,
+        timeout: Duration = .seconds(8),
+        list: (@Sendable (URL) throws -> [URL])? = nil
+    ) async -> FinderLocations.FinderLocationHealth.CheckResult {
+        if list == nil, shouldFakeError() { return .failed }
+        return await FinderLocations.FinderLocationHealth.checkStatus(
             root: root,
             timeout: timeout,
             preferredSubfolder: "DCIM",

@@ -485,7 +485,11 @@ struct HelpMenuCommands: Commands {
             }
 
             Button("Phone Not Showing Up?") {
-                NSWorkspace.shared.open(URL(string: "https://support.google.com/android/answer/9064445")!)
+                if let model = AppDelegate.model {
+                    model.showingPhoneHelp = true
+                } else {
+                    NSWorkspace.shared.open(URL(string: "https://support.google.com/android/answer/9064445")!)
+                }
             }
 
             Button("What's New in Pulli") {

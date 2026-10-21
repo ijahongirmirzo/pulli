@@ -1,5 +1,6 @@
 import AppKit
 import FileProvider
+import FinderLocations
 import PulliProtocol
 import RemoteFiles
 import TransferCore
@@ -70,7 +71,15 @@ extension AppModel {
         Task {
             defer { driveStatus = nil }
             let fresh = finderLocations[device.id] == nil && finderMounts[device.id] == nil
-            guard let root = await phoneFilesRoot(askForApproval: true) else { return }
+            guard let root = await phoneFilesRoot(askForApproval: true) else {
+                if finderLocationDisabled {
+                    finderTrouble = nil
+                }
+                return
+            }
+            if finderLocationDisabled {
+                finderTrouble = nil
+            }
             NSWorkspace.shared.open(root)
             if fresh { sounds.play(.connect) }
 
@@ -83,8 +92,14 @@ extension AppModel {
     /// Verifies that a Finder location is healthy and repairs it once if fileproviderd broke.
     private func verifyAndRepairFinderLocation(for device: DeviceSnapshot, root: URL) {
         Task {
-            let healthy = await FinderLocationHealth.check(root: root)
-            guard !healthy else { return }
+            let status = await FinderLocationHealth.checkStatus(root: root)
+            if status == .domainDisabled {
+                guard self.device?.id == device.id else { return }
+                finderLocationDisabled = true
+                await recordLog("Finder location domain disabled", level: 3, kind: "finder_location")
+                return
+            }
+            guard status != .healthy else { return }
             guard self.device?.id == device.id else { return }
 
             await recordLog("Finder location check failed", level: 3, kind: "finder_location")
@@ -101,9 +116,12 @@ extension AppModel {
             do {
                 let newRoot = try await FinderLocation.reset(deviceID: device.id, name: device.name)
                 finderLocations[device.id] = newRoot
-                let repaired = await FinderLocationHealth.check(root: newRoot)
+                let repairedStatus = await FinderLocationHealth.checkStatus(root: newRoot)
                 guard self.device?.id == device.id else { return }
-                if repaired {
+                if repairedStatus == .domainDisabled {
+                    finderLocationDisabled = true
+                    await recordLog("Finder location domain disabled", level: 3, kind: "finder_location")
+                } else if repairedStatus == .healthy {
                     await recordLog("Finder location repaired", level: 2, kind: "finder_location")
                     NSWorkspace.shared.open(newRoot)
                 } else {
@@ -112,8 +130,13 @@ extension AppModel {
                 }
             } catch {
                 guard self.device?.id == device.id else { return }
-                await recordLog("Finder location still failing", level: 4, kind: "finder_location")
-                finderTrouble = device.id
+                if FinderLocations.FinderLocationHealth.isDomainDisabledError(error) {
+                    finderLocationDisabled = true
+                    await recordLog("Finder location domain disabled", level: 3, kind: "finder_location")
+                } else {
+                    await recordLog("Finder location still failing", level: 4, kind: "finder_location")
+                    finderTrouble = device.id
+                }
             }
         }
     }
@@ -129,13 +152,22 @@ extension AppModel {
             let domainID = FinderLocation.identifier(for: device.id)
             RemoteFilesDomainStore(suiteName: PulliApp.appGroup)
                 .set(RemoteFilesDomainSettings(baseURL: driveURL, readOnly: false, displayName: device.name), for: domainID.rawValue)
-            let url = try? await FinderLocation.add(deviceID: device.id, name: device.name)
-            let domain = (try? await NSFileProviderManager.domains())?.first { $0.identifier == domainID }
-            if let url, domain?.userEnabled == true {
-                finderLocations[device.id] = url
-                return url
+            do {
+                let url = try await FinderLocation.add(deviceID: device.id, name: device.name)
+                let domain = (try? await NSFileProviderManager.domains())?.first { $0.identifier == domainID }
+                if domain?.userEnabled == false {
+                    finderLocationDisabled = true
+                    if askForApproval { finderLocationNeedsApproval = true }
+                } else if domain?.userEnabled == true {
+                    finderLocationDisabled = false
+                    finderLocations[device.id] = url
+                    return url
+                }
+            } catch {
+                if FinderLocations.FinderLocationHealth.isDomainDisabledError(error) {
+                    finderLocationDisabled = true
+                }
             }
-            if askForApproval, domain?.userEnabled == false { finderLocationNeedsApproval = true }
         }
         return await mountedDrive()
     }
