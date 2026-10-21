@@ -110,8 +110,8 @@ struct PulliApp: App {
 enum AboutCredits {
     static var text: NSAttributedString {
         let body = """
-        Pulli, created by Jakhongirmirzo Ibrokhimov.
-        Copyright © 2026 Jakhongirmirzo Ibrokhimov.
+        Pulli, created by Jahongirmirzo.
+        Copyright © 2026 Jahongirmirzo.
 
         Free software under the GNU General Public License version 3 or later, with no warranty. \
         The licence and the licences of the libraries Pulli uses are in Pulli.app › Contents › \

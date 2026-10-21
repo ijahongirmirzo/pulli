@@ -669,8 +669,7 @@ libusb's libtool archive. libusb still loads it.
 ## D-033 Licences: GPL v3 for Pulli, Apache 2.0 for FinderLocations (2026-10-17)
 
 - **Pulli** (everything outside `Packages/FinderLocations`): GNU GPL version 3 or later, with one
-  additional term under section 7(b): versions of Pulli keep the attribution "Pulli, created by
-  Jakhongirmirzo Ibrokhimov" in their About window and NOTICE file. Anyone may copy, change and
+  additional term under section 7(b): versions of Pulli keep the attribution "Pulli, created by Jahongirmirzo" in their About window and NOTICE file. Anyone may copy, change and
   sell Pulli, but only as open source under the same licence, so no one can sell a closed copy.
 - **FinderLocations**: Apache License 2.0 with a NOTICE file, so other Mac apps (open or closed)
   can use it, and must carry the owner's credit in their notices.

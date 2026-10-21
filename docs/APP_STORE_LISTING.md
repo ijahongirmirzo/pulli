@@ -62,7 +62,7 @@ ImageCaptureCore). Character limits in brackets.
 
 **Age rating:** 4+ (no objectionable content).
 
-**Copyright:** 2026 Jakhongirmirzo Ibrokhimov
+**Copyright:** 2026 Jahongirmirzo
 
 **Notes for App Review:**
 > Pulli needs an Android phone connected by USB. On the phone, choose "Transferring images"

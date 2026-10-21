@@ -151,7 +151,7 @@ $updates_plist
         <key>CFBundleURLName</key><string>app.pulli.mac</string>
         <key>CFBundleURLSchemes</key><array><string>pulli</string><string>relay</string></array>
     </dict></array>
-    <key>NSHumanReadableCopyright</key><string>© 2026 Jakhongirmirzo Ibrokhimov. Free software under the GNU GPL v3.</string>
+    <key>NSHumanReadableCopyright</key><string>© 2026 Jahongirmirzo. Free software under the GNU GPL v3.</string>
 </dict>
 </plist>
 PLIST
