@@ -16,8 +16,8 @@ actor TransferService {
         var currentJob: JobRecord?
         var recent: [FileSnapshot]
         var bytesDone: UInt64
-        var rate = 0.0
-        var lastSample: (time: ContinuousClock.Instant, bytes: UInt64)?
+        var rateCalculator = TransferRateCalculator()
+        var rate: Double { rateCalculator.rate }
     }
 
     private let journal: Journal
@@ -130,7 +130,7 @@ actor TransferService {
             queues[key]?.removeAll { $0 == id }
             runtime = runtimes[id] ?? runtime
             runtime.phase = .paused(.byUser)
-            runtime.rate = 0
+            runtime.rateCalculator.pause()
             runtimes[id] = runtime
         case .resume:
             guard runtime.phase != .completed else { return }
@@ -138,6 +138,7 @@ actor TransferService {
             try journal.setBatchState(id, .active)
             runtime.record = try journal.batch(id)
             runtime.phase = .paused(.queued)
+            runtime.rateCalculator.reset()
             runtimes[id] = runtime
             enqueue(runtime.record)
         case .cancel(let discard):
@@ -258,7 +259,7 @@ actor TransferService {
                 runtime.bytesDone = totals.bytesDone
                 runtime.record = (try? journal.batch(id)) ?? runtime.record
                 runtime.current = nil
-                runtime.rate = 0
+                runtime.rateCalculator.reset()
                 runtimes[id] = runtime
             }
             setPhase(id, .completed)
@@ -285,10 +286,10 @@ actor TransferService {
         case .connected(let info):
             runtime.deviceName = info.displayName
             if case .paused = runtime.phase { runtime.phase = runtime.record.state == .scanning ? .scanning : .copying }
+            runtime.rateCalculator.reset()
         case .waiting(let reason):
             runtime.phase = .paused(Self.pauseReason(reason))
-            runtime.rate = 0
-            runtime.lastSample = nil
+            runtime.rateCalculator.pause()
         case .batch(.scanning(_, _, let files, _)):
             runtime.phase = .scanning
             runtime.totals.filesTotal = max(runtime.totals.filesTotal, files)
@@ -303,17 +304,7 @@ actor TransferService {
             runtime.totals = progress.totals
             runtime.bytesDone = progress.bytesDone
             runtime.current?.bytesDone = progress.file.bytesReceived
-            let now = ContinuousClock.now
-            if let sample = runtime.lastSample {
-                let seconds = Double((now - sample.time).components.seconds) + Double((now - sample.time).components.attoseconds) / 1e18
-                if seconds >= 0.5 {
-                    let instant = Double(progress.bytesDone &- sample.bytes) / seconds
-                    runtime.rate = runtime.rate == 0 ? instant : runtime.rate * 0.7 + instant * 0.3
-                    runtime.lastSample = (now, progress.bytesDone)
-                }
-            } else {
-                runtime.lastSample = (now, progress.bytesDone)
-            }
+            runtime.rateCalculator.apply(progress: progress)
         case .batch(.fileFinished(let job, _)), .batch(.fileNeedsAttention(let job, _)):
             if let started = runtime.currentJob, started.id == job.id {
                 runtime.totals.replace(started, with: job)
@@ -427,7 +418,7 @@ actor TransferService {
     private func snapshot(for id: Int64) -> BatchSnapshot? {
         guard let runtime = runtimes[id] else { return nil }
         let record = runtime.record
-        let remaining = runtime.rate > 0 ? Double(runtime.totals.bytesTotal - min(runtime.bytesDone, runtime.totals.bytesTotal)) / runtime.rate : nil
+        let remaining = runtime.phase == .copying ? runtime.rateCalculator.secondsRemaining(bytesDone: runtime.bytesDone, bytesTotal: runtime.totals.bytesTotal) : nil
         let title = record.selection.split(separator: "\n").map { RemotePath(String($0)).name }.joined(separator: ", ")
         return BatchSnapshot(
             id: id, deviceID: record.deviceKey, deviceName: runtime.deviceName, title: title,
@@ -435,7 +426,7 @@ actor TransferService {
             filesTotal: runtime.totals.filesTotal, filesDone: runtime.totals.filesDone, filesSkipped: runtime.totals.filesSkipped,
             filesNeedingAttention: runtime.totals.filesNeedingAttention, bytesTotal: runtime.totals.bytesTotal,
             bytesDone: runtime.bytesDone, bytesPerSecond: runtime.rate,
-            secondsRemaining: runtime.phase == .copying ? remaining : nil,
+            secondsRemaining: remaining,
             current: runtime.current, recent: runtime.recent,
             createdAt: Date(timeIntervalSince1970: TimeInterval(record.createdAt) / 1000),
             finishedAt: record.finishedAt.map { Date(timeIntervalSince1970: TimeInterval($0) / 1000) }
