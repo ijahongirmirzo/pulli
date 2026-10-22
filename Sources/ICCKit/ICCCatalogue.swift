@@ -55,6 +55,8 @@ public struct ICCFolderIndex: Sendable {
     /// Children of every folder, the root included, sorted: folders first, then files, each by
     /// name as Finder sorts ("IMG_2" before "IMG_10").
     public private(set) var folders: [RemotePath: [Entry]] = [.root: []]
+    /// The newest modification date of anything inside each folder (recursively), or 0 if undated.
+    public private(set) var folderModified: [RemotePath: Int64] = [:]
     /// Where each item ended up, after any renaming for duplicates.
     public private(set) var paths: [Int: RemotePath] = [:]
     public private(set) var items: [Int: ICCCatalogueItem] = [:]
@@ -93,9 +95,26 @@ public struct ICCFolderIndex: Sendable {
             items[item.id] = item
         }
         folders = children.mapValues { $0.values.sorted(by: Self.order) }
+
+        var folderMax: [RemotePath: Int64] = [:]
+        for (item, parts) in cleaned {
+            guard item.modifiedWallClock > 0 else { continue }
+            var current = RemotePath(components: Array(parts.dropLast()))
+            while true {
+                folderMax[current] = max(folderMax[current] ?? 0, item.modifiedWallClock)
+                if current.isRoot { break }
+                current = current.parent
+            }
+        }
+        folderModified = folderMax
     }
 
     public var isEmpty: Bool { items.isEmpty }
+
+    /// The newest modification date of anything inside the folder, or 0 if undated.
+    public func modifiedWallClock(for folder: RemotePath) -> Int64 {
+        folderModified[folder] ?? 0
+    }
 
     public func node(at path: RemotePath) -> Node? {
         nodes[path]

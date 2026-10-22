@@ -261,7 +261,8 @@ public final class ICCSession: DeviceSession, Sendable {
         }
         let ref = ObjectRef(handle: handle, storage: Self.storageID, epoch: epoch)
         guard let id = child.itemID, let item = index.items[id] else {
-            return RemoteEntry(name: child.name, isFolder: true, size: 0, modifiedWallClock: 0, ref: ref)
+            return RemoteEntry(name: child.name, isFolder: true, size: 0,
+                               modifiedWallClock: index.modifiedWallClock(for: path), ref: ref)
         }
         return RemoteEntry(name: child.name, isFolder: false, size: item.size, modifiedWallClock: item.modifiedWallClock, ref: ref)
     }

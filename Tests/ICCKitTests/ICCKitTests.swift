@@ -99,6 +99,40 @@ private func names(_ index: ICCFolderIndex, _ folder: RemotePath) -> [String] {
         #expect(ICCCatalogueItem.wallClock(date, timeZone: TimeZone(identifier: "UTC")!) == 1_789_625_967)
         #expect(ICCCatalogueItem.wallClock(nil, timeZone: berlin) == 0)
     }
+
+    @Test func folderDatesFromChildrenNested() {
+        let index = ICCFolderIndex([
+            item(1, "DCIM/Camera/old.jpg", mtime: 1_700_000_000),
+            item(2, "DCIM/Camera/new.jpg", mtime: 1_790_000_000),
+            item(3, "DCIM/Screenshots/shot.png", mtime: 1_750_000_000),
+            item(4, "Pictures/Sub/Deep/photo.jpg", mtime: 1_780_000_000),
+        ])
+        #expect(index.modifiedWallClock(for: "DCIM/Camera") == 1_790_000_000)
+        #expect(index.modifiedWallClock(for: "DCIM/Screenshots") == 1_750_000_000)
+        #expect(index.modifiedWallClock(for: "DCIM") == 1_790_000_000)
+        #expect(index.modifiedWallClock(for: "Pictures/Sub/Deep") == 1_780_000_000)
+        #expect(index.modifiedWallClock(for: "Pictures/Sub") == 1_780_000_000)
+        #expect(index.modifiedWallClock(for: "Pictures") == 1_780_000_000)
+        #expect(index.modifiedWallClock(for: .root) == 1_790_000_000)
+    }
+
+    @Test func emptyFolderWithNoDate() {
+        let emptyIndex = ICCFolderIndex([])
+        #expect(emptyIndex.folderModified[.root] == nil)
+        #expect(emptyIndex.modifiedWallClock(for: .root) == 0)
+
+        // A folder whose children have no date keeps no date.
+        let undatedIndex = ICCFolderIndex([
+            item(1, "Undated/a.jpg", mtime: 0),
+            item(2, "Undated/Sub/b.jpg", mtime: 0),
+        ])
+        #expect(undatedIndex.folderModified["Undated/Sub"] == nil)
+        #expect(undatedIndex.modifiedWallClock(for: "Undated/Sub") == 0)
+        #expect(undatedIndex.folderModified["Undated"] == nil)
+        #expect(undatedIndex.modifiedWallClock(for: "Undated") == 0)
+        #expect(undatedIndex.folderModified[.root] == nil)
+        #expect(undatedIndex.modifiedWallClock(for: .root) == 0)
+    }
 }
 
 @Suite struct ICCIdentityTests {
@@ -415,11 +449,14 @@ private func bytes(_ count: Int, seed: UInt8) -> Data {
         for try await page in session.list(.root, storage: ICCSession.storageID) { root += page }
         #expect(root.map(\.name) == ["DCIM", "Pictures"])
         #expect(root.allSatisfy { $0.isFolder })
+        #expect(root.allSatisfy { $0.modifiedWallClock == 1_789_625_967 + 7_200 })
 
         let entry = try #require(try await session.stat("DCIM/Camera/a.jpg", storage: ICCSession.storageID))
         #expect(entry.size == 1000)
         #expect(entry.modifiedWallClock == 1_789_625_967 + 7_200)
-        #expect(try await session.stat("DCIM/Camera", storage: ICCSession.storageID)?.isFolder == true)
+        let cameraStat = try #require(try await session.stat("DCIM/Camera", storage: ICCSession.storageID))
+        #expect(cameraStat.isFolder)
+        #expect(cameraStat.modifiedWallClock == 1_789_625_967 + 7_200)
         #expect(try await session.stat("DCIM/Nope.jpg", storage: ICCSession.storageID) == nil)
         #expect(try await session.stat(.root, storage: ICCSession.storageID) == nil)
 
