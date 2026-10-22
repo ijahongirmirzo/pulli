@@ -1,8 +1,7 @@
-Pulli now tells you which app is in the way when your phone won't open.
+Two small fixes for smoother copies.
 
-- **Names the app holding your phone.** Google Drive, Dropbox, Photos, Image Capture and a few other apps can grab a phone in the background. When that happens Pulli now says which one, offers a Quit button, and carries on by itself once it has quit, instead of showing the name of a macOS service.
-- **A hint when the Finder location is off.** On a new Mac, macOS keeps Pulli's Finder location switched off until you allow it. Pulli now says so, with a button that opens the right page of System Settings.
-- **Help when the phone doesn't show up.** "Phone not showing up?" opens a short checklist: cable, USB mode, unlocking, and other apps that may be using the phone.
+- **A steady speed after a resume.** When a copy carries on after a pulled cable, a pause or a restart, the speed no longer jumps to a silly number for a moment. Pulli now counts only what it has read from the phone since resuming, and shows the speed once it has a real measurement.
+- **Real folder dates.** Folders in Pulli's browser now show the date the phone gives them, and anything the phone gives no date shows "-" in Pulli and in Finder, never 1 January 1970.
 
 **Which Macs:** every Mac with Apple silicon - an M1 chip or newer - running macOS 26 Tahoe or later. Intel Macs are not supported.
 
