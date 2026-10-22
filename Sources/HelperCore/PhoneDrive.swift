@@ -182,9 +182,9 @@ public actor PhoneDrive {
         storageSpace = (free, capacity > free ? capacity - free : 0)
     }
 
-    /// The phone's wall clock is encoded as UTC; Finder wants the real instant.
-    static func date(wallClock: Int64) -> Date {
-        guard wallClock > 0 else { return Date(timeIntervalSince1970: 0) }
+    /// The phone's wall clock is encoded as UTC; Finder wants the real instant, or nil when undated.
+    static func date(wallClock: Int64) -> Date? {
+        guard wallClock > 0 else { return nil }
         let naive = Date(timeIntervalSince1970: TimeInterval(wallClock))
         return naive.addingTimeInterval(-TimeInterval(TimeZone.current.secondsFromGMT(for: naive)))
     }
@@ -197,8 +197,9 @@ public actor PhoneDrive {
         return formatter
     }()
 
-    private static func dates(_ date: Date) -> String {
-        "<D:getlastmodified>\(httpDate.string(from: date))</D:getlastmodified><D:creationdate>\(ISO8601DateFormatter().string(from: date))</D:creationdate>"
+    private static func dates(_ date: Date?) -> String {
+        guard let date else { return "" }
+        return "<D:getlastmodified>\(httpDate.string(from: date))</D:getlastmodified><D:creationdate>\(ISO8601DateFormatter().string(from: date))</D:creationdate>"
     }
 
     static func xml(_ text: String) -> String {
@@ -251,8 +252,10 @@ public actor PhoneDrive {
             }
             let length = entry.size == 0 ? 0 : end - start + 1
             var headers = [("Content-Type", Self.contentType(entry.name)), ("Accept-Ranges", "bytes"),
-                           ("ETag", "\"\(entry.size)-\(entry.modifiedWallClock)\""),
-                           ("Last-Modified", Self.httpDate.string(from: Self.date(wallClock: entry.modifiedWallClock)))]
+                           ("ETag", "\"\(entry.size)-\(entry.modifiedWallClock)\"")]
+            if let date = Self.date(wallClock: entry.modifiedWallClock) {
+                headers.append(("Last-Modified", Self.httpDate.string(from: date)))
+            }
             if status == 206 { headers.append(("Content-Range", "bytes \(start)-\(end)/\(entry.size)")) }
             let hub = self.hub, deviceID = self.deviceID, ref = entry.ref, first = start
             return HTTPServer.Response(status: status, headers: headers, body: .stream(length: length) { send in

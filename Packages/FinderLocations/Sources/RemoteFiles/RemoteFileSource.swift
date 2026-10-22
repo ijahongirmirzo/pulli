@@ -18,6 +18,9 @@ public struct RemoteItem: Sendable, Hashable, Codable {
     /// its copy is stale.
     public var version: String?
 
+    /// Dates before 1990 are treated as unknown, so Finder shows "--" instead of 1 January 1970.
+    public static let earliestRealDate = Date(timeIntervalSince1970: 631_152_000)
+
     public init(path: String, isFolder: Bool, size: Int64? = nil, modified: Date? = nil, created: Date? = nil,
                 contentType: String? = nil, version: String? = nil) {
         self.path = path
