@@ -240,8 +240,7 @@ final class BatchDisplay: @unchecked Sendable {
     private let lock = NSLock()
     private var lastDraw = ContinuousClock.now - .seconds(1)
     private var lastWait: WaitReason?
-    private var rate = 0.0
-    private var lastSample: (time: ContinuousClock.Instant, bytes: UInt64)?
+    private var rateCalculator = TransferRateCalculator()
     private let started = ContinuousClock.now
     private var startBytes: UInt64?
     /// Bytes actually read from the phone in this run, per job (skipped files add nothing).
@@ -253,16 +252,17 @@ final class BatchDisplay: @unchecked Sendable {
             case .connected(let info):
                 if lastWait != nil { note("\(info.displayName) connected, \(Format.link(info.usb)). Continuing.") }
                 lastWait = nil
+                rateCalculator.reset()
             case .waiting(let reason):
                 guard reason != lastWait else { return }
                 lastWait = reason
-                rate = 0
-                lastSample = nil
+                rateCalculator.pause()
                 note("Paused: \(reason)")
             case .batch(.scanning(let folder, _, let files, _)):
                 draw("Scanning \(folder.isEmpty ? "/" : folder)… \(files) files found")
             case .batch(.progress(let progress)):
                 transferred[progress.job.id!] = progress.file.bytesReceived - min(progress.file.resumedFrom, progress.file.bytesReceived)
+                rateCalculator.apply(progress: progress)
                 render(progress)
             case .batch(.fileNeedsAttention(let job, let reason)):
                 note("Needs attention: \(job.sourcePath): \(reason)")
@@ -277,23 +277,15 @@ final class BatchDisplay: @unchecked Sendable {
     private func render(_ progress: BatchProgress) {
         let now = ContinuousClock.now
         if startBytes == nil { startBytes = progress.bytesDone }
-        if let sample = lastSample {
-            let interval = (now - sample.time).seconds
-            if interval >= 0.5 {
-                let instant = Double(progress.bytesDone &- sample.bytes) / interval
-                rate = rate == 0 ? instant : rate * 0.7 + instant * 0.3
-                lastSample = (now, progress.bytesDone)
-            }
-        } else {
-            lastSample = (now, progress.bytesDone)
-        }
         guard now - lastDraw >= .milliseconds(250) else { return }
         let totals = progress.totals
         let fileNumber = totals.filesDone + totals.filesSkipped + totals.filesNeedingAttention + 1
-        let remaining = rate > 0 ? Double(totals.bytesTotal - min(progress.bytesDone, totals.bytesTotal)) / rate : .infinity
+        let rate = rateCalculator.rate
+        let remaining = rateCalculator.secondsRemaining(bytesDone: progress.bytesDone, bytesTotal: totals.bytesTotal) ?? .infinity
         let percent = Double(progress.bytesDone) / Double(max(totals.bytesTotal, 1)) * 100
+        let speedText = rate > 0 ? Format.rate(rate) : (rateCalculator.isResuming ? "Resuming…" : Format.rate(0))
         draw(String(format: "%5.1f%%  file %d/%d  %@ of %@  %@  %@ left  %@", percent, fileNumber, totals.filesTotal,
-                    Format.bytes(progress.bytesDone), Format.bytes(totals.bytesTotal), Format.rate(rate),
+                    Format.bytes(progress.bytesDone), Format.bytes(totals.bytesTotal), speedText,
                     Format.duration(remaining), RemotePath(progress.job.sourcePath).name))
     }
 
@@ -319,8 +311,4 @@ final class BatchDisplay: @unchecked Sendable {
     private func note(_ message: String) {
         FileHandle.standardError.write(Data(("\r\u{1B}[K" + message + "\n").utf8))
     }
-}
-
-extension Duration {
-    var seconds: Double { Double(components.seconds) + Double(components.attoseconds) / 1e18 }
 }

@@ -1,8 +1,8 @@
-Proper menus and a quieter way to learn about updates.
+Pulli now tells you which app is in the way when your phone won't open.
 
-- **Menus that work.** File, Edit, View, Go, Window and Help now hold Pulli's own commands with their shortcuts: copy new photos, browse the phone, open it in Finder, switch views and sorting, jump to Camera or Screenshots, and more. Copy, Paste and Select All work in the phone browser too.
-- **A calm update notice.** When a new version is out, Pulli shows an Install Update row in the menu bar panel, a small dot on the menu bar icon and a pill in the sidebar, with one notification per version, instead of a pop-up window. Check for Updates is in the Pulli and Help menus.
-- **Tidier About window.** It now shows Pulli's own copyright line; the font credit stays in the bundled notices.
+- **Names the app holding your phone.** Google Drive, Dropbox, Photos, Image Capture and a few other apps can grab a phone in the background. When that happens Pulli now says which one, offers a Quit button, and carries on by itself once it has quit, instead of showing the name of a macOS service.
+- **A hint when the Finder location is off.** On a new Mac, macOS keeps Pulli's Finder location switched off until you allow it. Pulli now says so, with a button that opens the right page of System Settings.
+- **Help when the phone doesn't show up.** "Phone not showing up?" opens a short checklist: cable, USB mode, unlocking, and other apps that may be using the phone.
 
 **Which Macs:** every Mac with Apple silicon - an M1 chip or newer - running macOS 26 Tahoe or later. Intel Macs are not supported.
 
