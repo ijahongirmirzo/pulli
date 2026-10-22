@@ -55,8 +55,10 @@ enum Format {
         return formatter
     }()
 
+    /// "-" for an undated item (the phone reports 0), never 1 Jan 1970.
     static func phoneDate(_ wallClock: Int64) -> String {
-        phoneDateFormatter.string(from: Date(timeIntervalSince1970: TimeInterval(wallClock)))
+        guard wallClock > 0 else { return "-" }
+        return phoneDateFormatter.string(from: Date(timeIntervalSince1970: TimeInterval(wallClock)))
     }
 
     static func relativeDay(_ date: Date) -> String {

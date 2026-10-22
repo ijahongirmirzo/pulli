@@ -473,7 +473,7 @@ final class WebDAVMultistatusParser: NSObject, XMLParserDelegate, @unchecked Sen
 
     /// Dates before 1990 are a source's way of saying "no date" (phones report folders at the
     /// Unix epoch): treated as unknown, so Finder shows "--" instead of 1 January 1970.
-    static let earliestRealDate = Date(timeIntervalSince1970: 631_152_000)
+    static var earliestRealDate: Date { RemoteItem.earliestRealDate }
 
     static func parseRFC1123(_ string: String) -> Date? {
         DateParsers.shared.parseRFC1123(string).flatMap { $0 < earliestRealDate ? nil : $0 }

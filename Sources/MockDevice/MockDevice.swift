@@ -101,6 +101,20 @@ public final class MockDevice: Sendable {
         }
     }
 
+    public func addFolder(_ path: RemotePath, storage: StorageID? = nil) {
+        state.withLock { state in
+            let storage = storage ?? state.storages[0].id
+            var index = state.folders[storage] ?? [.root: Folder()]
+            var parent = RemotePath.root
+            for component in path.components {
+                index[parent, default: Folder()].folders[ExactName(component)] = component
+                parent = parent.appending(component)
+                if index[parent] == nil { index[parent] = Folder() }
+            }
+            state.folders[storage] = index
+        }
+    }
+
     public func removeFile(_ path: RemotePath, storage: StorageID? = nil) {
         state.withLock { state in
             let storage = storage ?? state.storages[0].id

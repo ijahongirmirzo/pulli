@@ -85,11 +85,13 @@ public final class RemoteProviderItem: NSObject, NSFileProviderItem, @unchecked 
     }
 
     public var contentModificationDate: Date? {
-        item.modified
+        guard let modified = item.modified, modified >= RemoteItem.earliestRealDate else { return nil }
+        return modified
     }
 
     public var creationDate: Date? {
-        item.created
+        guard let created = item.created, created >= RemoteItem.earliestRealDate else { return nil }
+        return created
     }
 
     public var itemVersion: NSFileProviderItemVersion {

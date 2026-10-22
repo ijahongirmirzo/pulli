@@ -121,4 +121,31 @@ import Testing
         try await Task.sleep(for: .seconds(2))
         #expect(device.file("Download/from-mac.bin")?.size == 70_000)
     }
+
+    @Test func undatedItemOmitsModificationDateAndNeverEmitsEpoch() async throws {
+        let device = MockDevice(serial: "UNDATED_TEST")
+        device.addFolder("EmptyFolder")
+        device.addFile("Undated.bin", size: 42, modifiedWallClock: 0)
+        let harness = try await Harness(devices: [device])
+        _ = try await harness.client.send(.setWatchingDevices(true))
+        let root = try await start(harness, device)
+
+        // PROPFIND on root listing the items
+        let (status, body, _) = try await request(root, "PROPFIND", headers: ["Depth": "1"])
+        #expect(status == 207)
+        let xml = String(decoding: body, as: UTF8.self)
+        #expect(!xml.contains("1970"))
+
+        // PROPFIND on the empty folder: no getlastmodified and no epoch
+        let (folderStatus, folderBody, _) = try await request(root.appendingPathComponent("EmptyFolder/"), "PROPFIND", headers: ["Depth": "0"])
+        #expect(folderStatus == 207)
+        let folderXml = String(decoding: folderBody, as: UTF8.self)
+        #expect(!folderXml.contains("<D:getlastmodified>"))
+        #expect(!folderXml.contains("1970"))
+
+        // GET on the undated file: no Last-Modified header
+        let (fileStatus, _, headers) = try await request(root.appendingPathComponent("Undated.bin"), "GET")
+        #expect(fileStatus == 200)
+        #expect(headers["Last-Modified"] == nil)
+    }
 }

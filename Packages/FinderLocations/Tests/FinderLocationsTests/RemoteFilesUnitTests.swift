@@ -157,6 +157,63 @@ import UniformTypeIdentifiers
         #expect(providerRoot.filename == "My Galaxy")
         #expect(providerRoot.contentType == .folder)
         #expect(providerRoot.documentSize == nil)
+        #expect(providerRoot.contentModificationDate == nil)
+        #expect(providerRoot.creationDate == nil)
+
+        // Item with epoch dates: treated as unknown (nil)
+        let epochItem = RemoteItem(
+            path: "/Photos/undated.jpeg",
+            isFolder: false,
+            modified: Date(timeIntervalSince1970: 0),
+            created: Date(timeIntervalSince1970: 0)
+        )
+        let providerEpoch = RemoteProviderItem(item: epochItem)
+        #expect(providerEpoch.contentModificationDate == nil)
+        #expect(providerEpoch.creationDate == nil)
+    }
+
+    @Test func parsesUndatedAndEpochMultistatusItems() throws {
+        let xml = """
+        <?xml version="1.0" encoding="utf-8"?>
+        <D:multistatus xmlns:D="DAV:">
+          <D:response>
+            <D:href>/abc123/myGalaxy/EmptyFolder/</D:href>
+            <D:propstat>
+              <D:prop>
+                <D:displayname>EmptyFolder</D:displayname>
+                <D:resourcetype><D:collection/></D:resourcetype>
+              </D:prop>
+              <D:status>HTTP/1.1 200 OK</D:status>
+            </D:propstat>
+          </D:response>
+          <D:response>
+            <D:href>/abc123/myGalaxy/EpochFolder/</D:href>
+            <D:propstat>
+              <D:prop>
+                <D:displayname>EpochFolder</D:displayname>
+                <D:resourcetype><D:collection/></D:resourcetype>
+                <D:getlastmodified>Thu, 01 Jan 1970 00:00:00 GMT</D:getlastmodified>
+                <D:creationdate>1970-01-01T00:00:00Z</D:creationdate>
+              </D:prop>
+              <D:status>HTTP/1.1 200 OK</D:status>
+            </D:propstat>
+          </D:response>
+        </D:multistatus>
+        """
+        let baseURL = URL(string: "http://127.0.0.1:52011/abc123/myGalaxy/")!
+        let items = try WebDAVSource.parseMultistatus(Data(xml.utf8), baseURL: baseURL)
+        #expect(items.count == 2)
+        #expect(items[0].modified == nil)
+        #expect(items[0].created == nil)
+        #expect(items[1].modified == nil)
+        #expect(items[1].created == nil)
+
+        let p0 = RemoteProviderItem(item: items[0])
+        #expect(p0.contentModificationDate == nil)
+        #expect(p0.creationDate == nil)
+        let p1 = RemoteProviderItem(item: items[1])
+        #expect(p1.contentModificationDate == nil)
+        #expect(p1.creationDate == nil)
     }
 
     @Test func mapsFileProviderErrors() {
