@@ -6,6 +6,29 @@
         <description>Most recent updates to Pulli.</description>
         <language>en</language>
         <item>
+            <title>Version 0.4.3</title>
+            <sparkle:version>20261022061138</sparkle:version>
+            <sparkle:shortVersionString>0.4.3</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
+            <pubDate>Thu, 22 Oct 2026 01:12:47 +0000</pubDate>
+            <description><![CDATA[
+<p>Pulli now tells you which app is in the way when your phone won&#x27;t open.</p>
+<ul>
+<li><b>Names the app holding your phone.</b> Google Drive, Dropbox, Photos, Image Capture and a few other apps can grab a phone in the background. When that happens Pulli now says which one, offers a Quit button, and carries on by itself once it has quit, instead of showing the name of a macOS service.</li>
+<li><b>A hint when the Finder location is off.</b> On a new Mac, macOS keeps Pulli&#x27;s Finder location switched off until you allow it. Pulli now says so, with a button that opens the right page of System Settings.</li>
+<li><b>Help when the phone doesn&#x27;t show up.</b> &quot;Phone not showing up?&quot; opens a short checklist: cable, USB mode, unlocking, and other apps that may be using the phone.</li>
+</ul>
+<p><b>Which Macs:</b> every Mac with Apple silicon - an M1 chip or newer - running macOS 26 Tahoe or later. Intel Macs are not supported.</p>
+<p><b>Install or update:</b> Pulli updates itself. New here? Open the disk image and drag Pulli to Applications, or use Homebrew: `brew install --cask ijahongirmirzo/tap/pulli`</p>
+            ]]></description>
+            <enclosure
+                url="https://github.com/ijahongirmirzo/pulli/releases/download/v0.4.3/Pulli-0.4.3.dmg"
+                length="19035164"
+                type="application/octet-stream"
+                sparkle:edSignature="wdIQDP7/SYEECLRC56Ns41RiEEZIuizVF+FlKOTR05bIK4awPxoW4CUrTZq+EHggtUXPP9D6rTEHecLK8+PXDw==" />
+        </item>
+
+        <item>
             <title>Version 0.4.2</title>
             <sparkle:version>20261021154247</sparkle:version>
             <sparkle:shortVersionString>0.4.2</sparkle:shortVersionString>
