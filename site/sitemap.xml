@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url><loc>{{SITE_URL}}/</loc><lastmod>{{BUILD_DATE}}</lastmod></url>
-  <url><loc>{{SITE_URL}}/privacy.html</loc><lastmod>{{BUILD_DATE}}</lastmod></url>
+  <url><loc>{{SITE_URL}}/privacy</loc><lastmod>{{BUILD_DATE}}</lastmod></url>
 </urlset>

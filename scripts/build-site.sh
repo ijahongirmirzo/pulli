@@ -1,13 +1,13 @@
 #!/bin/bash
 # Assembles the website into build/site: the pages in site/ plus the screenshots and animation
 # from docs/images, which the README also uses (so they are kept in one place).
-# The download buttons go to /download, which netlify.toml redirects to the newest release's
+# Hosted on Cloudflare Pages (build command: scripts/build-site.sh, output: build/site).
+# The download buttons go to /download, which site/_redirects sends to the newest release's
 # Pulli.dmg. The version shown under the button is read from appcast.xml (which
 # scripts/release.sh updates), so a release also updates the site.
-# The site's own address (for link previews) comes from Netlify's URL variable when it builds.
 # Preview: scripts/build-site.sh && python3 -m http.server -d build/site 8000
 set -euo pipefail
-site_url=${URL:-https://getpulli.com}
+site_url=https://getpulli.com
 cd "$(dirname "$0")/.."
 
 # The first item in the appcast is the newest release.

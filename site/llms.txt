@@ -31,7 +31,7 @@
 ## Links
 
 - [Website]({{SITE_URL}}/)
-- [Privacy policy]({{SITE_URL}}/privacy.html): Pulli collects nothing; it only checks GitHub for updates.
+- [Privacy policy]({{SITE_URL}}/privacy): Pulli collects nothing; it only checks GitHub for updates.
 - [Source code](https://github.com/ijahongirmirzo/pulli)
 - [Release notes](https://github.com/ijahongirmirzo/pulli/releases)
 - [Help and bug reports](https://github.com/ijahongirmirzo/pulli/issues)

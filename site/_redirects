@@ -1,0 +1,3 @@
+# Cloudflare Pages redirects. The download buttons: always the newest release's disk image,
+# with no version in the link.
+/download  https://github.com/ijahongirmirzo/pulli/releases/latest/download/Pulli.dmg  302
