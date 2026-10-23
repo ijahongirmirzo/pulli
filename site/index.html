@@ -5,16 +5,126 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Pulli - Android file transfer for Mac, done right</title>
 <meta name="description" content="Pulli is the free, open-source app for your Android phone and your Mac. Browse the phone like Finder, copy photos and files both ways, free up space - and if the cable comes out, it carries on where it stopped.">
+<link rel="canonical" href="{{SITE_URL}}/">
+<meta name="robots" content="index, follow, max-image-preview:large">
 <meta name="color-scheme" content="light dark">
 <meta name="theme-color" content="#eaecf7" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#1a1c27" media="(prefers-color-scheme: dark)">
 <link rel="icon" type="image/png" href="favicon.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta property="og:type" content="website">
+<meta property="og:site_name" content="Pulli">
+<meta property="og:url" content="{{SITE_URL}}/">
 <meta property="og:title" content="Pulli - Android file transfer for Mac, done right">
 <meta property="og:description" content="Browse your Android phone like Finder, copy photos and files both ways, and never lose progress. Free and open source.">
 <meta property="og:image" content="{{SITE_URL}}/images/social-preview.png">
+<meta property="og:image:width" content="1280">
+<meta property="og:image:height" content="640">
+<meta property="og:image:alt" content="Pulli: copy photos and files from your Android phone to your Mac">
 <meta name="twitter:card" content="summary_large_image">
+<link rel="alternate" type="text/plain" title="Pulli for AI agents" href="/llms.txt">
+<script type="application/ld+json">
+{
+ "@context": "https://schema.org",
+ "@graph": [
+  {
+   "@type": "SoftwareApplication",
+   "@id": "{{SITE_URL}}/#app",
+   "name": "Pulli",
+   "url": "{{SITE_URL}}/",
+   "description": "Free, open-source Mac app for Android phones: browse the phone like Finder, copy photos and files both ways over USB, free up space, and resume interrupted copies from the exact byte.",
+   "applicationCategory": "UtilitiesApplication",
+   "operatingSystem": "macOS 26 or later, Apple silicon",
+   "softwareVersion": "{{VERSION}}",
+   "downloadUrl": "{{SITE_URL}}/download",
+   "image": "{{SITE_URL}}/images/pulli-icon.png",
+   "screenshot": [
+    "{{SITE_URL}}/images/browse-light.jpg",
+    "{{SITE_URL}}/images/copying-light.jpg",
+    "{{SITE_URL}}/images/storage-map-light.jpg"
+   ],
+   "featureList": [
+    "Copy photos, videos and files from an Android phone to a Mac",
+    "Copy files from a Mac to an Android phone",
+    "Browse the phone like Finder, with Quick Look",
+    "The phone in Finder's sidebar",
+    "Resume interrupted copies from the exact byte",
+    "Free up space on the phone after a verified copy",
+    "Storage map, including WhatsApp, Telegram, Instagram and Viber media",
+    "Menu bar item, widgets, notifications and Shortcuts"
+   ],
+   "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "USD"
+   },
+   "isAccessibleForFree": true,
+   "license": "https://www.gnu.org/licenses/gpl-3.0.html",
+   "author": {
+    "@type": "Person",
+    "name": "Jahongirmirzo",
+    "url": "https://github.com/ijahongirmirzo"
+   },
+   "sameAs": [
+    "https://github.com/ijahongirmirzo/pulli"
+   ]
+  },
+  {
+   "@type": "FAQPage",
+   "mainEntity": [
+    {
+     "@type": "Question",
+     "name": "Which Android phones work with Pulli?",
+     "acceptedAnswer": {
+      "@type": "Answer",
+      "text": "Any Android phone with a USB cable that carries data and offers “File transfer”. Pulli is tested with Samsung Galaxy and Lenovo phones. Nothing needs to be installed on the phone."
+     }
+    },
+    {
+     "@type": "Question",
+     "name": "Which Macs does Pulli run on?",
+     "acceptedAnswer": {
+      "@type": "Answer",
+      "text": "Every Mac with Apple silicon (M1 or newer) running macOS 26 Tahoe or later. Intel Macs are not supported."
+     }
+    },
+    {
+     "@type": "Question",
+     "name": "Can I copy files from my Mac to my Android phone?",
+     "acceptedAnswer": {
+      "@type": "Answer",
+      "text": "Yes. Drag files onto the phone in Pulli, click Add…, or paste with ⌘V, even straight from Safari or Telegram."
+     }
+    },
+    {
+     "@type": "Question",
+     "name": "What happens if the cable comes out during a copy?",
+     "acceptedAnswer": {
+      "@type": "Answer",
+      "text": "Nothing is lost. Pulli saves its progress in 4 MB blocks and continues from the last saved block when the phone is back, even after a crash, a sleeping Mac or a restart."
+     }
+    },
+    {
+     "@type": "Question",
+     "name": "Pulli does not see my phone. What should I do?",
+     "acceptedAnswer": {
+      "@type": "Answer",
+      "text": "Unlock the phone and choose “File transfer” in its USB notification, not “Charging only”. Try another cable, since many cables only charge. Quit other apps that connect to phones, such as Image Capture. Pulli frees the phone from macOS's own camera service by itself."
+     }
+    },
+    {
+     "@type": "Question",
+     "name": "Is Pulli really free?",
+     "acceptedAnswer": {
+      "@type": "Answer",
+      "text": "Yes. Pulli is free and open source under the GPL-3.0 licence, with no account, no ads and no analytics. The code is on GitHub."
+     }
+    }
+   ]
+  }
+ ]
+}
+</script>
 <link rel="preload" href="fonts/PlusJakartaSans.woff" as="font" type="font/woff" crossorigin>
 <link rel="stylesheet" href="style.css">
 <script>document.documentElement.classList.add("js")</script>
@@ -295,6 +405,40 @@ scripts/make-app.sh</code></pre>
         <p>Any Android phone with a USB cable that carries data and offers “File transfer”. Tested with Samsung Galaxy and Lenovo phones.</p>
       </div>
     </div>
+  </div>
+</section>
+
+<section class="faq" id="faq">
+  <div class="narrow">
+    <div class="section-head reveal">
+      <p class="kicker">Questions</p>
+      <h2>Good to know.</h2>
+    </div>
+    <details class="reveal">
+      <summary>Which Android phones work with Pulli?</summary>
+      <p>Any Android phone with a USB cable that carries data and offers “File transfer”. Pulli is tested with Samsung Galaxy and Lenovo phones. Nothing needs to be installed on the phone.</p>
+    </details>
+    <details class="reveal">
+      <summary>Which Macs does Pulli run on?</summary>
+      <p>Every Mac with Apple silicon (M1 or newer) running macOS 26 Tahoe or later. Intel Macs are not supported.</p>
+    </details>
+    <details class="reveal">
+      <summary>Can I copy files from my Mac to my Android phone?</summary>
+      <p>Yes. Drag files onto the phone in Pulli, click Add…, or paste with ⌘V, even straight from Safari or Telegram.</p>
+    </details>
+    <details class="reveal">
+      <summary>What happens if the cable comes out during a copy?</summary>
+      <p>Nothing is lost. Pulli saves its progress in 4 MB blocks and continues from the last saved block when the phone is back, even after a crash, a sleeping Mac or a restart.</p>
+    </details>
+    <details class="reveal">
+      <summary>Pulli does not see my phone. What should I do?</summary>
+      <p>Unlock the phone and choose “File transfer” in its USB notification, not “Charging only”. Try another cable, since many cables only charge. Quit other apps that connect to phones, such as Image Capture. Pulli frees the phone from macOS's own camera service by itself.</p>
+    </details>
+    <details class="reveal">
+      <summary>Is Pulli really free?</summary>
+      <p>Yes. Pulli is free and open source under the GPL-3.0 licence, with no account, no ads and no analytics. The code is on GitHub.</p>
+    </details>
+    <p class="faq-more">More help: <a href="https://github.com/ijahongirmirzo/pulli#questions">questions on GitHub</a> or <a href="https://github.com/ijahongirmirzo/pulli/issues">ask in an issue</a>.</p>
   </div>
 </section>
 

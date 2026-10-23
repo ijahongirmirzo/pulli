@@ -1,0 +1,37 @@
+# Pulli
+
+> Pulli is a free, open-source Mac app for Android phones. It copies photos, videos and files
+> between an Android phone and a Mac over USB, in both directions, and continues an interrupted
+> copy from the exact byte where it stopped. Current version: {{VERSION}}.
+
+- Download (always the newest version, a notarised disk image): {{SITE_URL}}/download
+- Homebrew: `brew install --cask ijahongirmirzo/tap/pulli`
+- Requirements: a Mac with Apple silicon (M1 or newer) and macOS 26 Tahoe or later. Intel Macs
+  are not supported. Any Android phone with a data cable that offers "File transfer"; nothing is
+  installed on the phone.
+- Price and licence: free, open source under GPL-3.0. No account, no ads, no analytics.
+- Setup: install Pulli, plug in and unlock the phone, then choose "File transfer" in the phone's
+  USB notification.
+
+## What it does
+
+- Phone to Mac: photos, videos and any folder; one click copies only what is new since last time
+  and skips files already on the Mac, even under another name.
+- Mac to phone: drag files onto the phone, click Add..., or paste with Command-V.
+- Browse the phone like Finder: list or icons, sorting, previews, Quick Look; the phone also
+  appears in Finder's sidebar under Locations.
+- Copies that finish: 4 MB blocks saved before they are recorded, so a pulled cable, a locked
+  phone, a sleeping Mac, a crash or a restart never costs more than one block. Every file gets a
+  SHA-256 fingerprint.
+- Free up space: deletes copied originals from the phone only after checking each copy byte for
+  byte.
+- Storage map of the phone, including WhatsApp, Telegram, Instagram and Viber media.
+- Menu bar item, desktop widgets, notifications and Shortcuts actions.
+
+## Links
+
+- [Website]({{SITE_URL}}/)
+- [Privacy policy]({{SITE_URL}}/privacy.html): Pulli collects nothing; it only checks GitHub for updates.
+- [Source code](https://github.com/ijahongirmirzo/pulli)
+- [Release notes](https://github.com/ijahongirmirzo/pulli/releases)
+- [Help and bug reports](https://github.com/ijahongirmirzo/pulli/issues)

@@ -1,0 +1,5 @@
+# Search engines and AI agents are welcome. A summary for agents: {{SITE_URL}}/llms.txt
+User-agent: *
+Allow: /
+
+Sitemap: {{SITE_URL}}/sitemap.xml

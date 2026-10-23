@@ -275,6 +275,15 @@ a.oss-card:hover { text-decoration: none; border-color: color-mix(in srgb, var(-
 .oss-foot { text-align: center; margin: 0; }
 @media (max-width: 860px) { .oss-grid { grid-template-columns: 1fr; } }
 
+/* Questions */
+.faq details { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; margin-bottom: 12px; }
+.faq summary { cursor: pointer; list-style: none; padding: 18px 52px 18px 22px; font-weight: 650; font-size: 17px; position: relative; }
+.faq summary::-webkit-details-marker { display: none; }
+.faq summary::after { content: "+"; position: absolute; right: 22px; top: 50%; transform: translateY(-50%); font-size: 22px; font-weight: 500; color: var(--faint); }
+.faq details[open] summary::after { content: "\2212"; }
+.faq details p { margin: 0; padding: 0 22px 20px; color: var(--muted); font-size: 16px; }
+.faq-more { text-align: center; color: var(--faint); font-size: 15px; margin-top: 24px; }
+
 /* Final call */
 .final { text-align: center; padding-top: 40px; }
 .final .card {

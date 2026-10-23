@@ -22,11 +22,12 @@ rm -rf "$out"
 mkdir -p "$out/images"
 cp -R site/. "$out/"
 cp docs/images/*.jpg docs/images/*.webp docs/images/pulli-icon.png docs/images/social-preview.png "$out/images/"
-for page in "$out"/*.html; do
-    sed -i.bak -e "s#{{VERSION}}#$version#g" -e "s#{{SITE_URL}}#$site_url#g" "$page"
+build_date=$(date -u +%Y-%m-%d)
+for page in "$out"/*.html "$out"/*.xml "$out"/*.txt; do
+    sed -i.bak -e "s#{{VERSION}}#$version#g" -e "s#{{SITE_URL}}#$site_url#g" -e "s#{{BUILD_DATE}}#$build_date#g" "$page"
     rm "$page.bak"
 done
-if grep -l "{{" "$out"/*.html; then
+if grep -l "{{" "$out"/*.html "$out"/*.xml "$out"/*.txt; then
     echo "Error: unfilled placeholder in the pages above" >&2
     exit 1
 fi
