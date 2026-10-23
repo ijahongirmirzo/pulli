@@ -1,10 +1,13 @@
 # Builds the vendored libraries and the Swift packages, and runs the tests, on every push and
-# pull request. Needs a runner with Xcode for macOS 26.
+# pull request. Needs a runner with Xcode for macOS 26. Changes that only touch the website
+# (site/ and its build script) skip it; Cloudflare Pages builds those.
 name: CI
 on:
   push:
     branches: [main]
+    paths-ignore: [site/**, scripts/build-site.sh]
   pull_request:
+    paths-ignore: [site/**, scripts/build-site.sh]
 
 jobs:
   test:
