@@ -15,14 +15,22 @@ extension AppModel {
     // MARK: Phone to clipboard
 
     /// Puts phone items on the clipboard as files Finder and other apps can paste.
-    func copyToClipboard(_ paths: [String]) {
+    func copyToClipboard(_ paths: [String], storageID: UInt32? = nil) {
         guard !paths.isEmpty, let device else { return }
         let names = paths.map { ($0 as NSString).lastPathComponent }
+        let targetStorageID = storageID ?? activeStorage(for: device)?.id ?? device.storages.first?.id
         dragOutNotice = "Getting \(names.count == 1 ? names[0] : "\(names.count) items") ready to paste…"
         Task {
             defer { dragOutNotice = nil }
             guard let drive = await phoneFilesRoot() else { return }
-            let urls = paths.map { drive.appendingPathComponent(String($0.drop { $0 == "/" })) }
+            let baseDir: URL
+            if device.storages.count > 1, let targetStorageID {
+                let folderName = StorageDisplayName.uniqueFolderName(for: targetStorageID, in: device.storages)
+                baseDir = drive.appendingPathComponent(folderName)
+            } else {
+                baseDir = drive
+            }
+            let urls = paths.map { baseDir.appendingPathComponent(String($0.drop { $0 == "/" })) }
             let pasteboard = NSPasteboard.general
             pasteboard.clearContents()
             pasteboard.writeObjects(urls as [NSURL])
@@ -47,10 +55,10 @@ extension AppModel {
     // MARK: Clipboard and drops to phone
 
     /// ⌘V: copies what is on the clipboard into `folder` on the phone.
-    func pasteFromClipboard(into folder: String) {
+    func pasteFromClipboard(into folder: String, storageID: UInt32? = nil) {
         let pasteboard = NSPasteboard.general
         if let urls = pasteboard.readObjects(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true]) as? [URL], !urls.isEmpty {
-            send(urls, to: folder)
+            send(urls, to: folder, storageID: storageID)
             return
         }
         // A picture (copied in a browser, or a screenshot to the clipboard).
@@ -62,7 +70,7 @@ extension AppModel {
             let file = Self.unique(Self.incomingFolder().appendingPathComponent("Pasted Image \(Self.stamp()).\(ext)"))
             do {
                 try data.write(to: file)
-                send([file], to: folder)
+                send([file], to: folder, storageID: storageID)
             } catch {
                 banner = "Could not paste the picture: \(error.localizedDescription)"
             }
@@ -70,14 +78,14 @@ extension AppModel {
         }
         // A web address of a file.
         if let urls = pasteboard.readObjects(forClasses: [NSURL.self]) as? [URL], let web = urls.first(where: { $0.scheme == "http" || $0.scheme == "https" }) {
-            Task { await downloadAndSend(web, to: folder) }
+            Task { await downloadAndSend(web, to: folder, storageID: storageID) }
             return
         }
         banner = "The clipboard has no files or pictures to copy to the phone."
     }
 
     /// A drop from any app onto a phone folder.
-    func receive(_ providers: [NSItemProvider], into folder: String) {
+    func receive(_ providers: [NSItemProvider], into folder: String, storageID: UInt32? = nil) {
         guard !providers.isEmpty else { return }
         dragOutNotice = "Receiving \(providers.count == 1 ? "1 item" : "\(providers.count) items")…"
         let incoming = Self.incomingFolder()
@@ -90,22 +98,22 @@ extension AppModel {
             if files.isEmpty {
                 banner = "Pulli could not take what was dropped. Try saving it to the Mac first, then drop the file."
             } else {
-                send(files, to: folder)
+                send(files, to: folder, storageID: storageID)
             }
         }
     }
 
-    private func send(_ files: [URL], to folder: String) {
-        upload(files, to: folder)
+    private func send(_ files: [URL], to folder: String, storageID: UInt32? = nil) {
+        upload(files, to: folder, storageID: storageID)
         let where_ = folder == "/" ? device?.name ?? "the phone" : (folder as NSString).lastPathComponent
         showToast("Copying \(files.count == 1 ? "\u{201C}\(files[0].lastPathComponent)\u{201D}" : "\(files.count) items") to \(where_).")
     }
 
-    private func downloadAndSend(_ web: URL, to folder: String) async {
+    private func downloadAndSend(_ web: URL, to folder: String, storageID: UInt32? = nil) async {
         dragOutNotice = "Downloading \(web.lastPathComponent)…"
         defer { dragOutNotice = nil }
         if let file = await Self.download(web, into: Self.incomingFolder()) {
-            send([file], to: folder)
+            send([file], to: folder, storageID: storageID)
         } else {
             banner = "Could not download \(web.absoluteString)."
         }
@@ -222,7 +230,7 @@ extension AppModel {
         }
     }
 
-    private static func unique(_ url: URL) -> URL {
+    nonisolated private static func unique(_ url: URL) -> URL {
         guard FileManager.default.fileExists(atPath: url.path) else { return url }
         let base = url.deletingPathExtension().lastPathComponent, ext = url.pathExtension
         for index in 2... {

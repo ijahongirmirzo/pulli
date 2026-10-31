@@ -11,6 +11,8 @@ public enum WaitReason: Sendable, Equatable, CustomStringConvertible {
     case heldBy(InterfaceHolder)
     case destination(DestinationError)
     case retrying(after: Duration, reason: String)
+    /// The batch's storage is not available on the device (card removed or renumbered).
+    case storageUnavailable(detail: String)
 
     public var description: String {
         switch self {
@@ -20,6 +22,7 @@ public enum WaitReason: Sendable, Equatable, CustomStringConvertible {
         case .heldBy(let holder): "\(CameraClientApps.sanitizedHolderName(holder.name)) is using the phone. Quit it to continue."
         case .destination(let error): "Destination problem: \(error). Fix it to continue."
         case .retrying(let delay, let reason): "\(reason). Retrying in \(delay.formatted(.units(allowed: [.seconds], width: .abbreviated)))."
+        case .storageUnavailable(let detail): "Storage not available: \(detail). Reconnect it to continue."
         }
     }
 }
@@ -92,7 +95,7 @@ public struct TransferSupervisor: Sendable {
             }
             events(.connected(session.info))
             do {
-                try await waitForStorage(session, events: events)
+                try await waitForStorage(session, storageID: batch.storageID, events: events)
             } catch let error as DeviceError {
                 await session.close()
                 events(.waiting(Self.reason(for: error)))
@@ -147,14 +150,27 @@ public struct TransferSupervisor: Sendable {
         }
     }
 
-    /// Waits while the phone shows no storage (locked, or access not yet allowed), keeping the
-    /// session open: closing and reopening would reset the USB device each time.
-    private func waitForStorage(_ session: any DeviceSession, events: @Sendable (SupervisorEvent) -> Void) async throws {
-        var announced = false
-        while try await session.storages().isEmpty {
-            if !announced {
-                events(.waiting(.locked))
-                announced = true
+    /// Waits while the phone shows no storage (locked, or access not yet allowed) or while the batch's
+    /// storage is not available (card removed or renumbered), keeping the session open.
+    private func waitForStorage(_ session: any DeviceSession, storageID: StorageID, events: @Sendable (SupervisorEvent) -> Void) async throws {
+        var lastReason: WaitReason?
+        while true {
+            let storages = try await session.storages()
+            if storages.isEmpty {
+                let reason = WaitReason.locked
+                if lastReason != reason {
+                    events(.waiting(reason))
+                    lastReason = reason
+                }
+            } else if !storages.contains(where: { $0.id == storageID }) {
+                let hex = String(format: "0x%08x", storageID)
+                let reason = WaitReason.storageUnavailable(detail: "storage \(hex) is not available on \(session.info.displayName)")
+                if lastReason != reason {
+                    events(.waiting(reason))
+                    lastReason = reason
+                }
+            } else {
+                return
             }
             try await sleep(pollInterval)
         }

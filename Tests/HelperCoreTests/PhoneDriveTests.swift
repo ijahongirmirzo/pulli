@@ -148,4 +148,75 @@ import Testing
         #expect(fileStatus == 200)
         #expect(headers["Last-Modified"] == nil)
     }
+
+    @Test func browsesAndRoutesWithMultipleStorages() async throws {
+        let internalStorage = StorageInfo(id: 0x0001_0001, description: "Internal shared storage", volumeIdentifier: nil, capacityBytes: 256 << 30, freeBytes: 128 << 30)
+        let sdStorage = StorageInfo(id: 0x0002_0001, description: "SD card", volumeIdentifier: nil, capacityBytes: 128 << 30, freeBytes: 64 << 30)
+        let device = MockDevice(serial: "MULTI1", storages: [internalStorage, sdStorage])
+        device.addFile("DCIM/Camera/internal.jpg", size: 100_000, storage: internalStorage.id)
+        device.addFile("Music/tune.mp3", size: 500_000, storage: sdStorage.id)
+
+        let harness = try await Harness(devices: [device])
+        _ = try await harness.client.send(.setWatchingDevices(true))
+        let root = try await start(harness, device)
+
+        // Root PROPFIND lists the storages as folders.
+        let (rootStatus, rootBody, _) = try await request(root, "PROPFIND", headers: ["Depth": "1"])
+        #expect(rootStatus == 207)
+        let rootXml = String(decoding: rootBody, as: UTF8.self)
+        #expect(rootXml.contains("<D:displayname>Internal storage</D:displayname>"))
+        #expect(rootXml.contains("<D:displayname>SD card</D:displayname>"))
+
+        // PROPFIND on the SD card folder lists its root contents.
+        let (sdStatus, sdBody, _) = try await request(root.appendingPathComponent("SD card/"), "PROPFIND", headers: ["Depth": "1"])
+        #expect(sdStatus == 207)
+        let sdXml = String(decoding: sdBody, as: UTF8.self)
+        #expect(sdXml.contains("<D:displayname>Music</D:displayname>"))
+
+        // GET reads from the target storage.
+        let expectedTune = try #require(device.expectedContent("Music/tune.mp3", storage: sdStorage.id))
+        let (getTuneStatus, tuneBytes, _) = try await request(root.appendingPathComponent("SD card/Music/tune.mp3"), "GET")
+        #expect(getTuneStatus == 200)
+        #expect(tuneBytes == expectedTune)
+
+        // Uploading into a storage routes to that storage.
+        let uploadTarget = root.appendingPathComponent("SD card/Music/new.txt")
+        #expect(try await request(uploadTarget, "PUT", body: Data("hello".utf8)).0 == 201)
+        #expect(device.file("Music/new.txt", storage: sdStorage.id)?.size == 5)
+        #expect(device.file("Music/new.txt", storage: internalStorage.id) == nil)
+
+        // Creating folders in the root is forbidden.
+        #expect(try await request(root.appendingPathComponent("RootFolder/"), "MKCOL").0 == 403)
+    }
+}
+
+@Suite struct StorageRouterTests {
+    @Test func singleStorageRouting() {
+        let router = StorageRouter(singleStorageID: 0x10001)
+        #expect(!router.isMultiStorage)
+        #expect(router.resolve("/") == .root(storageID: 0x10001))
+        #expect(router.resolve("/DCIM/Camera") == .item(storageID: 0x10001, remotePath: "/DCIM/Camera", storageFolderName: nil))
+        #expect(router.drivePath(storageID: 0x10001, remotePath: "/DCIM/Camera") == "/DCIM/Camera")
+    }
+
+    @Test func multiStorageRoutingAndUniqueNames() {
+        let s1 = StorageSnapshot(id: 0x10001, name: "Phone", capacityBytes: 100, freeBytes: 50)
+        let s2 = StorageSnapshot(id: 0x20001, name: "SD card", capacityBytes: 200, freeBytes: 150)
+        let s3 = StorageSnapshot(id: 0x30001, name: "SD card", capacityBytes: 200, freeBytes: 150)
+        let router = StorageRouter(storages: [s1, s2, s3])
+
+        #expect(router.isMultiStorage)
+        #expect(router.storages.map(\.folderName) == ["Internal storage", "SD card", "SD card 2"])
+
+        #expect(router.resolve("/") == .root(storageID: nil))
+        #expect(router.resolve("/Internal storage") == .storageRoot(storage: router.storages[0]))
+        #expect(router.resolve("/SD card") == .storageRoot(storage: router.storages[1]))
+        #expect(router.resolve("/SD card 2") == .storageRoot(storage: router.storages[2]))
+        #expect(router.resolve("/SD card/Music/tune.mp3") == .item(storageID: 0x20001, remotePath: "/Music/tune.mp3", storageFolderName: "SD card"))
+        #expect(router.resolve("/SD card 2/Audio") == .item(storageID: 0x30001, remotePath: "/Audio", storageFolderName: "SD card 2"))
+        #expect(router.resolve("/Unknown/path") == .notFound)
+
+        #expect(router.drivePath(storageID: 0x20001, remotePath: "/Music/tune.mp3") == "/SD card/Music/tune.mp3")
+        #expect(router.drivePath(storageID: 0x10001, remotePath: "/") == "/Internal storage")
+    }
 }

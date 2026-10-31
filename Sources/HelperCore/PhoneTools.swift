@@ -112,15 +112,19 @@ public actor PhoneTools {
     }
 
     private func scan(deviceID: String, storageID: UInt32, scanID: UUID) async {
-        let root = Tally(name: "Internal storage", path: "/")
-        var folders = 0
-        var lastReport = ContinuousClock.now
-        let report = { [publish] (done: Bool, error: String?) in
-            publish(.storageScan(StorageScan(scanID: scanID, root: root.node(depth: 4), foldersScanned: folders, done: done, error: error)))
-        }
         do {
             let session = try await session(deviceID)
             defer { Task { await session.close() } }
+            let storages = try await session.storages()
+            let isFirst = storages.first?.id == storageID
+            let storage = storages.first(where: { $0.id == storageID })
+            let name = StorageDisplayName.name(for: storage?.description, isFirst: isFirst)
+            let root = Tally(name: name, path: "/")
+            var folders = 0
+            var lastReport = ContinuousClock.now
+            let report = { [publish] (done: Bool, error: String?) in
+                publish(.storageScan(StorageScan(scanID: scanID, root: root.node(depth: 4), foldersScanned: folders, done: done, error: error)))
+            }
             _ = try await walk(session, .root, storage: storageID) { folder, files in
                 folders += 1
                 // Add each file to every folder on its way from the top.
@@ -156,7 +160,8 @@ public actor PhoneTools {
         } catch is CancellationError {
             return
         } catch {
-            report(true, (error as? PulliError)?.message ?? "\(error)")
+            let root = Tally(name: "Internal storage", path: "/")
+            publish(.storageScan(StorageScan(scanID: scanID, root: root.node(depth: 4), foldersScanned: 0, done: true, error: (error as? PulliError)?.message ?? "\(error)")))
         }
         scans[scanID] = nil
     }

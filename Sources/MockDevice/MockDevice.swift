@@ -83,6 +83,11 @@ public final class MockDevice: Sendable {
         state.withLock { $0.storages[0].id }
     }
 
+    /// Replaces the storages reported by the simulated phone (for example to renumber or remove an SD card).
+    public func setStorages(_ storages: [StorageInfo]) {
+        state.withLock { $0.storages = storages }
+    }
+
     // MARK: Scenario control
 
     public func addFile(_ path: RemotePath, size: UInt64, modifiedWallClock: Int64 = 1_760_000_000, seed: UInt64? = nil, storage: StorageID? = nil) {

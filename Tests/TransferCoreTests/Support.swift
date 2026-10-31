@@ -42,13 +42,18 @@ final class Workspace {
 
     /// A batch selecting these paths on the device's default storage.
     func batch(_ device: MockDevice, _ paths: [RemotePath], policy: DuplicatePolicy = .auto, organize: String? = nil) async throws -> BatchRecord {
+        try await batch(device, storageID: device.defaultStorage, paths, policy: policy, organize: organize)
+    }
+
+    /// A batch selecting these paths on a specific storage of the device.
+    func batch(_ device: MockDevice, storageID: StorageID, _ paths: [RemotePath], policy: DuplicatePolicy = .auto, organize: String? = nil) async throws -> BatchRecord {
         let session = try device.connect()
         var items: [BatchItem] = []
         for path in paths {
-            let entry = try #require(try await session.stat(path, storage: device.defaultStorage), "\(path) not on device")
+            let entry = try #require(try session.stat(path, storage: storageID), "\(path) not on device")
             items.append(BatchItem(entry, at: path))
         }
-        return try journal.createBatch(deviceKey: device.key, storageID: device.defaultStorage, destinationRoot: destination,
+        return try journal.createBatch(deviceKey: device.key, storageID: storageID, destinationRoot: destination,
                                        items: items, duplicatePolicy: policy, organize: organize)
     }
 
@@ -154,14 +159,14 @@ extension TransferSupervisor {
     static func mock(
         _ device: MockDevice, workspace: Workspace, sink: any FileSink = POSIXFileSink(),
         configuration: TransferConfiguration = TestConfig.transfer,
-        onSleep: @escaping @Sendable () -> Void = {}
+        onSleep: @escaping @Sendable () throws -> Void = {}
     ) -> TransferSupervisor {
         var supervisor = TransferSupervisor(connector: MockConnector(device), journal: workspace.journal, sink: sink, configuration: configuration)
         let sleeps = Counter()
         supervisor.sleep = { _ in
             if sleeps.increment() > 20_000 { throw CancellationError() }
             if !device.isPluggedIn { device.plug() }
-            onSleep()
+            try onSleep()
             await Task.yield()
         }
         return supervisor
@@ -190,9 +195,10 @@ func transferWithReconnects(
 /// Checks every finished job of a batch against the phone's current content.
 func expectBatchMatchesDevice(_ workspace: Workspace, _ device: MockDevice, batchID: Int64,
                               sourceLocation: SourceLocation = #_sourceLocation) throws {
+    let batch = try workspace.journal.batch(batchID)
     for job in try workspace.journal.jobs(batchID: batchID) where job.status == .done || job.status == .skipped {
         let copied = try Data(contentsOf: job.destinationURL)
-        let expected = try #require(device.expectedContent(RemotePath(job.sourcePath)), sourceLocation: sourceLocation)
+        let expected = try #require(device.expectedContent(RemotePath(job.sourcePath), storage: batch.storageID), sourceLocation: sourceLocation)
         #expect(copied == expected, "\(job.sourcePath) → \(job.destinationURL.path)", sourceLocation: sourceLocation)
     }
     #expect(workspace.leftoverPartFiles().isEmpty, sourceLocation: sourceLocation)

@@ -159,6 +159,7 @@ struct OverviewView: View {
         let newItems = summary.newItems
         // The Browse card goes in the first gap: the top row's if it has one, else Downloads' slot.
         let browseOnTop = summary.cameraMark == nil && (summary.screenshots == nil || summary.camera == nil)
+        let secondStorage = device.storages.count > 1 ? device.storages[1] : nil
         return VStack(spacing: 16) {
             HStack(spacing: 16) {
                 if summary.cameraMark != nil {
@@ -184,21 +185,36 @@ struct OverviewView: View {
                 }
             }
             .frame(height: 172)
-            GeometryReader { proxy in
-                let first = (proxy.size.width - 16) / 2.25
+            if let secondStorage {
                 HStack(spacing: 16) {
                     if let downloads = summary.downloads {
                         PickCard(pick: .downloads, title: "Downloads", big: Format.count(downloads.files.count, "file"),
                                  small: Format.bytes(downloads.bytes) + (downloads.folderCount > 0 ? " · \(Format.count(downloads.folderCount, "folder")) not counted" : ""),
                                  art: Gem(form: .squircle, palette: .sky, symbol: "arrow.down.to.line", size: 116, tilt: 8), reviewPath: downloads.path)
-                            .frame(width: first)
                     } else if !browseOnTop {
-                        BrowseCard().frame(width: first)
+                        BrowseCard()
                     }
-                    CableCard(device: device)
+                    StorageCard(device: device, storage: secondStorage)
+                    CableCard(device: device, compact: true)
                 }
+                .frame(height: 172)
+            } else {
+                GeometryReader { proxy in
+                    let first = (proxy.size.width - 16) / 2.25
+                    HStack(spacing: 16) {
+                        if let downloads = summary.downloads {
+                            PickCard(pick: .downloads, title: "Downloads", big: Format.count(downloads.files.count, "file"),
+                                     small: Format.bytes(downloads.bytes) + (downloads.folderCount > 0 ? " · \(Format.count(downloads.folderCount, "folder")) not counted" : ""),
+                                     art: Gem(form: .squircle, palette: .sky, symbol: "arrow.down.to.line", size: 116, tilt: 8), reviewPath: downloads.path)
+                                .frame(width: first)
+                        } else if !browseOnTop {
+                            BrowseCard().frame(width: first)
+                        }
+                        CableCard(device: device)
+                    }
+                }
+                .frame(height: 172)
             }
-            .frame(height: 172)
         }
     }
 
@@ -307,9 +323,58 @@ private struct BrowseCard: View {
     }
 }
 
+/// A card for secondary storage (for example a microSD card) showing used and total space and a Browse button.
+private struct StorageCard: View {
+    var device: DeviceSnapshot
+    var storage: StorageSnapshot
+    @Environment(AppModel.self) private var model
+    @Environment(\.tone) private var tone
+
+    var body: some View {
+        let name = StorageDisplayName.name(for: storage.name, isFirst: false)
+        let total = storage.capacityBytes ?? 0
+        let free = storage.freeBytes ?? 0
+        let used = total > free ? total - free : 0
+        CardShell(
+            art: Gem(form: .squircle, palette: .slate, symbol: "sdcard.fill", size: 116, tilt: 6),
+            action: {
+                model.setActiveStorageID(storage.id, for: device.id)
+                model.openBrowser(at: "/")
+            },
+            actionName: "Browse"
+        ) {
+            Text(name).font(.pulli(14, .medium))
+        } footer: {
+            VStack(alignment: .leading, spacing: 3) {
+                Text(total > 0 ? Format.bytes(used) : name).font(.pulli(28, .semibold)).tracking(-0.3).lineLimit(1).minimumScaleFactor(0.7)
+                Text(total > 0 ? "of \(Format.bytes(total)) used" : "Storage").font(.pulli(13.5)).foregroundStyle(tone.t2).lineLimit(1)
+                if total > 0 {
+                    Capsule().fill(tone.t3.opacity(0.25)).frame(height: 5)
+                        .overlay(alignment: .leading) {
+                            GeometryReader { bar in
+                                Capsule().fill(Color.accent).frame(width: bar.size.width * min(1, Double(used) / Double(total)))
+                            }
+                        }
+                        .clipShape(Capsule())
+                        .padding(.top, 4)
+                }
+            }
+            .monospacedDigit()
+            Spacer(minLength: 8)
+            Button("Browse") {
+                model.setActiveStorageID(storage.id, for: device.id)
+                model.openBrowser(at: "/")
+            }
+            .buttonStyle(PillButtonStyle(small: true))
+        }
+    }
+}
+
 /// The cable card: the USB version now, whether a better cable or port would help, and by how much.
 private struct CableCard: View {
     var device: DeviceSnapshot
+    /// A third of the row (with the SD card card): the headline wraps and the sentence is left out.
+    var compact = false
     @Environment(AppModel.self) private var model
     @Environment(\.tone) private var tone
     @AppStorage("suggestCable") private var suggestCable = true
@@ -324,12 +389,14 @@ private struct CableCard: View {
                 .font(.pulli(14, .medium))
         } footer: {
             VStack(alignment: .leading, spacing: 3) {
-                Text(headline(cable)).font(.pulli(28, .semibold)).tracking(-0.3).lineLimit(1).minimumScaleFactor(0.7)
-                Text(detail(cable, allBytes: all)).font(.pulli(13.5)).foregroundStyle(tone.t2).lineLimit(2).fixedSize(horizontal: false, vertical: true)
+                Text(headline(cable)).font(.pulli(compact ? 20 : 28, .semibold)).tracking(-0.3).lineLimit(compact ? 2 : 1).minimumScaleFactor(0.7)
+                if !compact {
+                    Text(detail(cable, allBytes: all)).font(.pulli(13.5)).foregroundStyle(tone.t2).lineLimit(2).fixedSize(horizontal: false, vertical: true)
+                }
             }
             Spacer(minLength: 8)
             if slow {
-                Button("Which Cable?") { model.showingCableHelp = true }.buttonStyle(PillButtonStyle(small: true))
+                Button("Which Cable?") { model.showingCableHelp = true }.buttonStyle(PillButtonStyle(small: true)).fixedSize()
             }
         }
     }

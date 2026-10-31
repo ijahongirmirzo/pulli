@@ -223,11 +223,11 @@ public actor HelperEngine {
 
         case .startDrive(let deviceID):
             if let running = drives[deviceID] { return .drive(url: running.url) }
-            guard let snapshot = await hub.snapshot(forID: deviceID), let storage = snapshot.storages.first else {
+            guard let snapshot = await hub.snapshot(forID: deviceID), !snapshot.storages.isEmpty else {
                 throw PulliError(.deviceUnavailable, "the phone is not ready")
             }
             let volume = snapshot.name.replacingOccurrences(of: "/", with: "-")
-            let drive = PhoneDrive(deviceID: deviceID, storageID: storage.id, volume: volume, hub: hub) { [weak self] in
+            let drive = PhoneDrive(deviceID: deviceID, storages: snapshot.storages, volume: volume, hub: hub) { [weak self] in
                 self?.driveChangesAllowed.value ?? false
             }
             await drive.refreshSpace()

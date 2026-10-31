@@ -95,14 +95,57 @@ struct StorageMapView: View {
         return scan.done ? "\(files) · click a tile, click again to look inside" : "Scanning… \(files) in \(scan.foldersScanned.formatted()) folders"
     }
 
-    private func crumbs(_ root: StorageNode?) -> some View {
-        HStack(spacing: 6) {
-            Image(systemName: "iphone.gen3").font(.system(size: 12, weight: .semibold)).foregroundStyle(tone.t2)
-            if trail.isEmpty {
-                Text("Internal storage").fontWeight(.semibold)
-            } else {
-                Button("Internal storage") { withAnimation(.pulliNavigation) { trail = []; selected = nil } }.buttonStyle(InlineLinkStyle())
+    @ViewBuilder
+    private func storageCrumb(name: String) -> some View {
+        let active = model.activeStorage(for: device) ?? device.storages.first
+        if device.storages.count > 1 {
+            Menu {
+                ForEach(device.storages) { storage in
+                    let first = storage.id == device.storages.first?.id
+                    let storageName = StorageDisplayName.name(for: storage.name, isFirst: first)
+                    Button {
+                        guard model.activeStorageID(for: device.id) != storage.id else {
+                            withAnimation(.pulliNavigation) { trail = []; selected = nil }
+                            return
+                        }
+                        withAnimation(.pulliNavigation) { trail = []; selected = nil }
+                        model.setActiveStorageID(storage.id, for: device.id)
+                        model.rescanStorage(storageID: storage.id)
+                    } label: {
+                        if storage.id == active?.id {
+                            Label(storageName, systemImage: "checkmark")
+                        } else {
+                            Text(storageName)
+                        }
+                    }
+                }
+            } label: {
+                HStack(spacing: 3) {
+                    Text(name)
+                        .fontWeight(trail.isEmpty ? .semibold : .regular)
+                    Image(systemName: "chevron.up.chevron.down")
+                        .font(.system(size: 8, weight: .bold))
+                        .foregroundStyle(tone.t3)
+                }
             }
+            .menuStyle(.button)
+            .buttonStyle(.plain)
+            .menuIndicator(.hidden)
+            .fixedSize()
+        } else {
+            if trail.isEmpty {
+                Text(name).fontWeight(.semibold)
+            } else {
+                Button(name) { withAnimation(.pulliNavigation) { trail = []; selected = nil } }.buttonStyle(InlineLinkStyle())
+            }
+        }
+    }
+
+    private func crumbs(_ root: StorageNode?) -> some View {
+        let rootName = model.activeStorageName(for: device)
+        return HStack(spacing: 6) {
+            Image(systemName: "iphone.gen3").font(.system(size: 12, weight: .semibold)).foregroundStyle(tone.t2)
+            storageCrumb(name: rootName)
             ForEach(Array(trail.enumerated()), id: \.offset) { index, path in
                 Image(systemName: "chevron.right").font(.system(size: 10, weight: .bold)).foregroundStyle(tone.t3)
                 let name = StorageStyle.style(path: path, name: (path as NSString).lastPathComponent).name
@@ -139,9 +182,11 @@ struct StorageMapView: View {
             if let node, !node.children.isEmpty {
                 largest(node)
             }
-            if let storage = device.storages.first, let capacity = storage.capacityBytes, let free = storage.freeBytes, capacity > 0 {
+            if let storage = model.activeStorage(for: device) ?? device.storages.first, let capacity = storage.capacityBytes, let free = storage.freeBytes, capacity > 0 {
+                let isFirst = storage.id == device.storages.first?.id
+                let storageLabel = StorageDisplayName.name(for: storage.name, isFirst: isFirst)
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("Phone storage").font(.pulli(13.5, .semibold))
+                    Text(storageLabel).font(.pulli(13.5, .semibold))
                     GeometryReader { proxy in
                         ZStack(alignment: .leading) {
                             Capsule().fill(tone.track)
@@ -207,7 +252,7 @@ struct StorageMapView: View {
                 if !looseFiles {
                     Button {
                         let paths = group ? tile.children.map(\.path) : [tile.path]
-                        Task { await model.copy(paths: paths) }
+                        Task { await model.copy(paths: paths, storageID: model.activeStorageID(for: device.id)) }
                     } label: { Label("Copy to Mac", systemImage: "arrow.down.to.line") }
                         .buttonStyle(PillButtonStyle(kind: .accent, small: true))
                 }
@@ -269,7 +314,7 @@ struct StorageMapView: View {
 
     private func folderName(of tile: StorageNode) -> String {
         let path = parentPath(of: tile)
-        return path == "/" ? "Internal storage" : StorageStyle.style(path: path, name: (path as NSString).lastPathComponent).name
+        return path == "/" ? model.activeStorageName(for: device) : StorageStyle.style(path: path, name: (path as NSString).lastPathComponent).name
     }
 
     private func breakdown(_ label: String, _ bytes: UInt64) -> some View {

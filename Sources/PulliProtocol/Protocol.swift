@@ -9,7 +9,7 @@ public import Foundation
 /// - `ClientHello` / `HelperHello` never change shape.
 public enum PulliProtocolVersion {
     public static let major: UInt16 = 1
-    public static let minor: UInt16 = 4
+    public static let minor: UInt16 = 5
 
     /// The short marketing version ("0.4.0").
     public static var shortVersion: String {
@@ -96,6 +96,57 @@ public struct StorageSnapshot: Codable, Sendable, Hashable, Identifiable {
         self.name = name
         self.capacityBytes = capacityBytes
         self.freeBytes = freeBytes
+    }
+
+    /// User-facing display name for this storage.
+    public func displayName(isFirst: Bool) -> String {
+        StorageDisplayName.name(for: name, isFirst: isFirst)
+    }
+}
+
+/// Helper for storage display names and unique folder names.
+public enum StorageDisplayName {
+    /// Formats a storage display name:
+    /// - Keep the phone's own name when it is meaningful (for example "SD card" or "SanDisk SD card")
+    /// - Show "Internal storage" for names containing "internal" or "phone" (case-insensitive) or for an empty name on the first storage
+    /// - Show "SD card" for an empty name on a later storage
+    public static func name(for rawName: String?, isFirst: Bool) -> String {
+        let trimmed = rawName?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        if trimmed.isEmpty {
+            return isFirst ? "Internal storage" : "SD card"
+        }
+        let lower = trimmed.lowercased()
+        if lower.contains("internal") || lower.contains("phone") {
+            return "Internal storage"
+        }
+        return trimmed
+    }
+
+    /// Convenience for index-based storage lists.
+    public static func name(for rawName: String?, index: Int) -> String {
+        name(for: rawName, isFirst: index == 0)
+    }
+
+    /// Generates unique folder names for a list of storages, appending " 2", " 3" on duplicate names.
+    public static func uniqueFolderNames<T>(for storages: [T], name: (T) -> String) -> [String] {
+        var counts: [String: Int] = [:]
+        var result: [String] = []
+        for (index, item) in storages.enumerated() {
+            let base = StorageDisplayName.name(for: name(item), isFirst: index == 0)
+            let count = (counts[base] ?? 0) + 1
+            counts[base] = count
+            result.append(count == 1 ? base : "\(base) \(count)")
+        }
+        return result
+    }
+
+    /// Returns the unique folder name for a storage within a list of snapshots.
+    public static func uniqueFolderName(for storageID: UInt32, in storages: [StorageSnapshot]) -> String {
+        let names = uniqueFolderNames(for: storages, name: { $0.name })
+        if let index = storages.firstIndex(where: { $0.id == storageID }), names.indices.contains(index) {
+            return names[index]
+        }
+        return "Internal storage"
     }
 }
 
@@ -204,6 +255,9 @@ public enum PauseReason: Codable, Sendable, Hashable {
     case retrying(secondsLeft: Int, detail: String)
     /// Waiting for another batch on the same phone to finish.
     case queued
+    /// The card or storage was renumbered or removed.
+    /// The storage this copy reads from is gone: card removed or renumbered (1.5).
+    case storageUnavailable(detail: String)
     case unknown
 }
 

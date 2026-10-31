@@ -444,6 +444,7 @@ actor TransferService {
         case .destination(.noSpace): .destinationFull
         case .destination(let error): .destinationUnavailable(detail: error.description)
         case .retrying(let after, let detail): .retrying(secondsLeft: Int(after.components.seconds), detail: detail)
+        case .storageUnavailable(let detail): .storageUnavailable(detail: detail)
         }
     }
 

@@ -33,6 +33,20 @@ public struct MockPhones: DeviceWatcher {
         }
         // PULLI_MOCK_LOCKED=1: the phone starts locked, so the app shows its unlock guide.
         if ProcessInfo.processInfo.environment["PULLI_MOCK_LOCKED"] == "1" { phone.setLocked(true) }
+        // PULLI_MOCK_SD_CARD=1: add a second storage "SD card" holding DCIM/Camera and Music.
+        if ProcessInfo.processInfo.environment["PULLI_MOCK_SD_CARD"] == "1" {
+            let sdID: StorageID = 0x0002_0001
+            phone.setStorages([
+                StorageInfo(id: 0x0001_0001, description: "Internal shared storage", volumeIdentifier: nil, capacityBytes: 256 << 30, freeBytes: 128 << 30),
+                StorageInfo(id: sdID, description: "SD card", volumeIdentifier: nil, capacityBytes: 128 << 30, freeBytes: 64 << 30),
+            ])
+            phone.addFile("DCIM/Camera/20261001_101500.jpg", size: 3_200_000, storage: sdID)
+            phone.addFile("DCIM/Camera/20261002_143000.jpg", size: 4_100_000, storage: sdID)
+            phone.addFile("DCIM/Camera/20261003_182000.mp4", size: 45_000_000, storage: sdID)
+            phone.addFolder("Music", storage: sdID)
+            phone.addFile("Music/track01.mp3", size: 8_500_000, storage: sdID)
+            phone.addFile("Music/track02.mp3", size: 6_200_000, storage: sdID)
+        }
         return MockPhones(devices: [phone])
     }
 

@@ -1,5 +1,6 @@
 import Foundation
 @testable import Pulli
+import PulliClient
 import PulliProtocol
 import Testing
 
@@ -184,5 +185,80 @@ struct AppModelTests {
         #expect(Format.duration(80 * 60) == "1 h 20 min")
         #expect(Format.speed(31_400_000) == "31 MB/s")
         #expect(Format.place(NSHomeDirectory() + "/Pictures/From myGalaxy") == "Pictures › From myGalaxy")
+    }
+}
+
+@Suite struct StorageDisplayNameTests {
+    @Test func displayNameRules() {
+        // Keep meaningful name
+        #expect(StorageDisplayName.name(for: "SD card", isFirst: false) == "SD card")
+        #expect(StorageDisplayName.name(for: "SanDisk SD card", isFirst: false) == "SanDisk SD card")
+        #expect(StorageDisplayName.name(for: "Extreme Pro", isFirst: false) == "Extreme Pro")
+
+        // Names containing "internal" or "phone" (case-insensitive) -> "Internal storage"
+        #expect(StorageDisplayName.name(for: "Internal shared storage", isFirst: true) == "Internal storage")
+        #expect(StorageDisplayName.name(for: "internal", isFirst: true) == "Internal storage")
+        #expect(StorageDisplayName.name(for: "Phone storage", isFirst: true) == "Internal storage")
+        #expect(StorageDisplayName.name(for: "PHONE", isFirst: false) == "Internal storage")
+
+        // Empty name on first storage -> "Internal storage"
+        #expect(StorageDisplayName.name(for: "", isFirst: true) == "Internal storage")
+        #expect(StorageDisplayName.name(for: "   ", isFirst: true) == "Internal storage")
+        #expect(StorageDisplayName.name(for: nil, isFirst: true) == "Internal storage")
+
+        // Empty name on later storage -> "SD card"
+        #expect(StorageDisplayName.name(for: "", isFirst: false) == "SD card")
+        #expect(StorageDisplayName.name(for: nil, isFirst: false) == "SD card")
+    }
+
+    @Test func uniqueFolderNamesDisambiguation() {
+        let names = ["SD card", "SD card", "SD card"]
+        let unique = StorageDisplayName.uniqueFolderNames(for: names, name: { $0 })
+        #expect(unique == ["SD card", "SD card 2", "SD card 3"])
+
+        let mixed = ["Internal", "SD card", "SD card"]
+        let uniqueMixed = StorageDisplayName.uniqueFolderNames(for: mixed, name: { $0 })
+        #expect(uniqueMixed == ["Internal storage", "SD card", "SD card 2"])
+    }
+}
+
+@Suite struct ActiveStorageTests {
+    @MainActor
+    @Test func activeStorageDefaultsAndFallback() {
+        let s1 = StorageSnapshot(id: 0x10001, name: "Internal", capacityBytes: 100, freeBytes: 50)
+        let s2 = StorageSnapshot(id: 0x20001, name: "SD card", capacityBytes: 200, freeBytes: 150)
+        var device = DeviceSnapshot(
+            id: "dev1", name: "Phone", model: "Galaxy", manufacturer: "Samsung", link: .usb2,
+            linkBitsPerSecond: 480_000_000, state: .ready, storages: [s1, s2], resumable: true, cable: nil
+        )
+
+        var state = PulliState()
+        state.devices = ["dev1": device]
+        let model = AppModel(preview: state)
+
+        // Defaults to first storage
+        #expect(model.activeStorageID(for: "dev1") == 0x10001)
+        #expect(model.activeStorageName(for: device) == "Internal storage")
+
+        // Switch to second storage
+        model.setActiveStorageID(0x20001, for: "dev1")
+        #expect(model.activeStorageID(for: "dev1") == 0x20001)
+        #expect(model.activeStorageName(for: device) == "SD card")
+
+        // Fallback to first if active ID disappears from device storages
+        device.storages = [s1]
+        model.state.devices["dev1"] = device
+        #expect(model.activeStorageID(for: "dev1") == 0x10001)
+        #expect(model.activeStorageName(for: device) == "Internal storage")
+
+        // Re-adding second storage and switching
+        device.storages = [s1, s2]
+        model.state.devices["dev1"] = device
+        model.setActiveStorageID(0x20001, for: "dev1")
+        #expect(model.activeStorageID(for: "dev1") == 0x20001)
+
+        // Reset to first
+        model.switchToFirstStorage()
+        #expect(model.activeStorageID(for: "dev1") == 0x10001)
     }
 }

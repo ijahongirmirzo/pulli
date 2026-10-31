@@ -17,6 +17,7 @@ public import PulliProtocol
 public actor PhoneDrive {
     let deviceID: String
     let storageID: StorageID
+    public private(set) var router: StorageRouter
     public let token: String
     public let volume: String
     private let hub: DeviceHub
@@ -29,8 +30,20 @@ public actor PhoneDrive {
     /// Files created through this drive in this session: Finder may replace or remove them.
     private var ours: Set<String> = []
 
-    init(deviceID: String, storageID: StorageID, volume: String, hub: DeviceHub, allowChanges: @escaping @Sendable () -> Bool) {
+    public init(deviceID: String, storages: [StorageSnapshot], volume: String, hub: DeviceHub, allowChanges: @escaping @Sendable () -> Bool) {
         self.deviceID = deviceID
+        let router = StorageRouter(storages: storages)
+        self.router = router
+        self.storageID = router.defaultStorageID
+        self.volume = volume
+        self.hub = hub
+        self.allowChanges = allowChanges
+        token = UUID().uuidString.replacingOccurrences(of: "-", with: "").lowercased().prefix(20).description
+    }
+
+    public init(deviceID: String, storageID: StorageID, volume: String, hub: DeviceHub, allowChanges: @escaping @Sendable () -> Bool) {
+        self.deviceID = deviceID
+        self.router = StorageRouter(singleStorageID: storageID)
         self.storageID = storageID
         self.volume = volume
         self.hub = hub
@@ -97,10 +110,23 @@ public actor PhoneDrive {
 
     private func list(_ folder: String, fresh: Bool = false) async throws -> [RemoteEntry] {
         if !fresh, let cached = listings[folder], ContinuousClock.now - cached.at < .seconds(3) { return cached.entries }
-        let entries = try await withSession { session in
-            var all: [RemoteEntry] = []
-            for try await page in session.list(RemotePath(folder), storage: storageID) { all += page }
-            return all
+        let entries: [RemoteEntry]
+        if router.isMultiStorage && folder == "/" {
+            entries = router.storages.map {
+                RemoteEntry(name: $0.folderName, isFolder: true, size: 0, modifiedWallClock: 0, ref: ObjectRef(handle: 0, storage: $0.id, epoch: SessionEpoch(rawValue: 0)))
+            }
+        } else {
+            let (targetStorageID, targetRemotePath): (StorageID, RemotePath) = switch router.resolve(folder) {
+            case .root(let sid): (sid ?? storageID, .root)
+            case .storageRoot(let storage): (storage.id, .root)
+            case .item(let sid, let rpath, _): (sid, RemotePath(rpath))
+            case .notFound: throw DeviceError.notFound(RemotePath(folder))
+            }
+            entries = try await withSession { session in
+                var all: [RemoteEntry] = []
+                for try await page in session.list(targetRemotePath, storage: targetStorageID) { all += page }
+                return all
+            }
         }
         listings[folder] = (.now, entries)
         return entries
@@ -119,10 +145,19 @@ public actor PhoneDrive {
         if path == "/" { return .folder(name: volume, modified: 0) }
         if let data = sidecars[path] { return .finderFile(data) }
         if let created = placeholders[path] { return .placeholder(created) }
+        if router.isMultiStorage {
+            if case .storageRoot(let storage) = router.resolve(path) {
+                return .folder(name: storage.folderName, modified: 0)
+            }
+            if case .notFound = router.resolve(path) {
+                return nil
+            }
+        }
         let name = (path as NSString).lastPathComponent
         let parent = (path as NSString).deletingLastPathComponent
+        let parentPath = parent.isEmpty ? "/" : parent
         do {
-            guard let entry = try await list(parent.isEmpty ? "/" : parent).first(where: { $0.name == name }) else { return nil }
+            guard let entry = try await list(parentPath).first(where: { $0.name == name }) else { return nil }
             return entry.isFolder ? .folder(name: entry.name, modified: entry.modifiedWallClock) : .file(entry)
         } catch DeviceError.notFound {
             return nil
@@ -148,6 +183,15 @@ public actor PhoneDrive {
         return HTTPServer.Response(status: 207, headers: [("Content-Type", "application/xml; charset=utf-8")], body: .data(Data(body.utf8)))
     }
 
+    private func space(for path: String) -> (free: UInt64, used: UInt64)? {
+        if path == "/" { return storageSpace }
+        if router.isMultiStorage, case .storageRoot(let storage) = router.resolve(path),
+           let free = storage.freeBytes, let cap = storage.capacityBytes {
+            return (free, cap > free ? cap - free : 0)
+        }
+        return nil
+    }
+
     private func response(for path: String, _ item: Item) -> String {
         let name = path == "/" ? volume : (path as NSString).lastPathComponent
         var props = "<D:displayname>\(Self.xml(name))</D:displayname>"
@@ -155,7 +199,7 @@ public actor PhoneDrive {
         case .folder(_, let modified):
             props += "<D:resourcetype><D:collection/></D:resourcetype>"
             props += Self.dates(Self.date(wallClock: modified))
-            if path == "/", let space = storageSpace {
+            if let space = space(for: path) {
                 props += "<D:quota-available-bytes>\(space.free)</D:quota-available-bytes><D:quota-used-bytes>\(space.used)</D:quota-used-bytes>"
             }
         case .file(let entry):
@@ -176,10 +220,15 @@ public actor PhoneDrive {
 
     /// The drive's size for Finder (called when the drive starts).
     func refreshSpace() async {
-        guard let storages = try? await withSession({ try await $0.storages() }),
-              let storage = storages.first(where: { $0.id == storageID }) ?? storages.first,
-              let free = storage.freeBytes, let capacity = storage.capacityBytes else { return }
-        storageSpace = (free, capacity > free ? capacity - free : 0)
+        guard let storages = try? await withSession({ try await $0.storages() }) else { return }
+        router.updateSpaces(storages)
+        let totalFree = storages.compactMap(\.freeBytes).reduce(0, +)
+        let totalCap = storages.compactMap(\.capacityBytes).reduce(0, +)
+        if totalCap > 0 {
+            storageSpace = (totalFree, totalCap > totalFree ? totalCap - totalFree : 0)
+        } else if let first = storages.first, let free = first.freeBytes, let cap = first.capacityBytes {
+            storageSpace = (free, cap > free ? cap - free : 0)
+        }
     }
 
     /// The phone's wall clock is encoded as UTC; Finder wants the real instant, or nil when undated.
@@ -278,11 +327,15 @@ public actor PhoneDrive {
     private func put(_ path: String, _ request: HTTPServer.Request) async throws -> HTTPServer.Response {
         let name = (path as NSString).lastPathComponent
         let parent = (path as NSString).deletingLastPathComponent
+        let parentPath = parent.isEmpty ? "/" : parent
         if Self.isFinderFile(name) {
             sidecars[path] = request.bodyFile.flatMap { try? Data(contentsOf: $0) } ?? request.body
             return HTTPServer.Response(status: 201)
         }
-        guard case .folder? = try await item(parent.isEmpty ? "/" : parent) else { return .text(409, "No such folder on the phone.") }
+        guard case .folder? = try await item(parentPath) else { return .text(409, "No such folder on the phone.") }
+        if router.isMultiStorage && parentPath == "/" {
+            return .text(403, "Cannot upload directly to the drive root; choose a storage first.")
+        }
         let existing = try await item(path)
         let isNew: Bool = if case .none = existing { true } else { false }
         let mayReplace = ours.contains(path) || placeholders[path] != nil || allowChanges()
@@ -295,32 +348,48 @@ public actor PhoneDrive {
             ours.insert(path)
             return HTTPServer.Response(status: 201)
         }
+        let (targetStorageID, remoteParent): (StorageID, RemotePath) = switch router.resolve(parentPath) {
+        case .root(let sid): (sid ?? storageID, .root)
+        case .storageRoot(let storage): (storage.id, .root)
+        case .item(let sid, let rpath, _): (sid, RemotePath(rpath))
+        case .notFound: throw DeviceError.notFound(RemotePath(parentPath))
+        }
         try await withSession { session in
             if case .file(let old) = existing {
                 // Send the new content under a temporary name first, so a failed upload never
                 // loses the old file.
                 let temporary = ".pulli-\(UUID().uuidString.prefix(8))-\(name)"
-                let sent = try await session.upload(file, as: temporary, into: RemotePath(parent.isEmpty ? "/" : parent), storage: storageID) { _ in }
+                let sent = try await session.upload(file, as: temporary, into: remoteParent, storage: targetStorageID) { _ in }
                 try await session.delete(old.ref)
                 try await session.rename(sent.ref, to: name)
             } else {
-                _ = try await session.upload(file, as: name, into: RemotePath(parent.isEmpty ? "/" : parent), storage: storageID) { _ in }
+                _ = try await session.upload(file, as: name, into: remoteParent, storage: targetStorageID) { _ in }
             }
         }
         placeholders[path] = nil
         ours.insert(path)
-        forget(parent.isEmpty ? "/" : parent)
+        forget(parentPath)
         return HTTPServer.Response(status: isNew ? 201 : 204)
     }
 
     private func mkcol(_ path: String) async throws -> HTTPServer.Response {
         if case .some = try await item(path) { return .text(405, "Already there.") }
         let parent = (path as NSString).deletingLastPathComponent
+        let parentPath = parent.isEmpty ? "/" : parent
         let name = (path as NSString).lastPathComponent
-        guard case .folder? = try await item(parent.isEmpty ? "/" : parent) else { return .text(409) }
-        _ = try await withSession { try await $0.makeFolder(name, in: RemotePath(parent.isEmpty ? "/" : parent), storage: storageID) }
+        guard case .folder? = try await item(parentPath) else { return .text(409) }
+        if router.isMultiStorage && parentPath == "/" {
+            return .text(403, "Cannot create folders in the drive root.")
+        }
+        let (targetStorageID, remoteParent): (StorageID, RemotePath) = switch router.resolve(parentPath) {
+        case .root(let sid): (sid ?? storageID, .root)
+        case .storageRoot(let storage): (storage.id, .root)
+        case .item(let sid, let rpath, _): (sid, RemotePath(rpath))
+        case .notFound: throw DeviceError.notFound(RemotePath(parentPath))
+        }
+        _ = try await withSession { try await $0.makeFolder(name, in: remoteParent, storage: targetStorageID) }
         ours.insert(path)
-        forget(parent.isEmpty ? "/" : parent)
+        forget(parentPath)
         return HTTPServer.Response(status: 201)
     }
 
@@ -328,13 +397,28 @@ public actor PhoneDrive {
         if sidecars.removeValue(forKey: path) != nil { return HTTPServer.Response(status: 204) }
         if placeholders.removeValue(forKey: path) != nil { ours.remove(path); return HTTPServer.Response(status: 204) }
         guard path != "/" else { return .text(403) }
+        if router.isMultiStorage, case .storageRoot = router.resolve(path) {
+            return .text(403, "Cannot delete a storage.")
+        }
         guard ours.contains(path) || allowChanges() else {
             return .text(403, "Deleting on the phone from Finder is off. Turn on Settings › Allow deleting and renaming in Finder.")
         }
         guard let target = try await item(path) else { return .text(404) }
         let ref: ObjectRef? = switch target {
         case .file(let entry): entry.ref
-        case .folder: try await withSession { try await $0.stat(RemotePath(path), storage: storageID)?.ref }
+        case .folder:
+            try await withSession { session in
+                switch router.resolve(path) {
+                case .root(let sid):
+                    try await session.stat(.root, storage: sid ?? storageID)?.ref
+                case .storageRoot:
+                    nil
+                case .item(let sid, let rpath, _):
+                    try await session.stat(RemotePath(rpath), storage: sid)?.ref
+                case .notFound:
+                    nil
+                }
+            }
         default: nil
         }
         guard let ref else { return .text(404) }
@@ -350,6 +434,11 @@ public actor PhoneDrive {
         if let data = sidecars.removeValue(forKey: path) {
             sidecars[target] = data
             return HTTPServer.Response(status: 201)
+        }
+        if path == "/" || target == "/" { return .text(403) }
+        if router.isMultiStorage {
+            if case .storageRoot = router.resolve(path) { return .text(403, "Cannot rename a storage.") }
+            if case .storageRoot = router.resolve(target) { return .text(403, "Cannot overwrite a storage.") }
         }
         let parent = (path as NSString).deletingLastPathComponent
         guard parent == (target as NSString).deletingLastPathComponent else {
@@ -367,9 +456,23 @@ public actor PhoneDrive {
         let existing = try await item(target)
         let isNew: Bool = if case .none = existing { true } else { false }
         if !isNew, !overwrite { return .text(412) }
+        let targetStorageID: StorageID
+        let remotePath: RemotePath
+        switch router.resolve(path) {
+        case .root(let sid):
+            targetStorageID = sid ?? storageID
+            remotePath = .root
+        case .storageRoot:
+            return .text(403, "Cannot rename a storage.")
+        case .item(let sid, let rpath, _):
+            targetStorageID = sid
+            remotePath = RemotePath(rpath)
+        case .notFound:
+            return .text(404)
+        }
         try await withSession { session in
             if case .file(let old)? = existing { try await session.delete(old.ref) }
-            guard let entry = try await session.stat(RemotePath(path), storage: storageID) else { throw DeviceError.notFound(RemotePath(path)) }
+            guard let entry = try await session.stat(remotePath, storage: targetStorageID) else { throw DeviceError.notFound(remotePath) }
             try await session.rename(entry.ref, to: (target as NSString).lastPathComponent)
         }
         _ = source
@@ -402,4 +505,3 @@ public actor PhoneDrive {
         return HTTPServer.Response(status: 207, headers: [("Content-Type", "application/xml; charset=utf-8")], body: .data(Data(body.utf8)))
     }
 }
-

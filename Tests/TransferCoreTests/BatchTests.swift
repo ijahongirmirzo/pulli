@@ -355,6 +355,95 @@ import TransferCore
         #expect(mainAfter.range(of: needle) == nil)
         #expect(walAfter.range(of: needle) == nil)
     }
+
+    @Test func copyFromSecondStorageReachesRightBytes() async throws {
+        let internalStorage = StorageInfo(id: 0x0001_0001, description: "Internal shared storage", volumeIdentifier: nil, capacityBytes: 256 << 30, freeBytes: 128 << 30)
+        let sdStorage = StorageInfo(id: 0x0002_0001, description: "SD card", volumeIdentifier: nil, capacityBytes: 128 << 30, freeBytes: 64 << 30)
+        let device = MockDevice(storages: [internalStorage, sdStorage])
+        // Both storages hold the same file path with different contents.
+        device.addFile("DCIM/Camera/photo.jpg", size: 100_000, seed: 111, storage: internalStorage.id)
+        device.addFile("DCIM/Camera/photo.jpg", size: 250_000, seed: 222, storage: sdStorage.id)
+
+        let internalExpected = try #require(device.expectedContent("DCIM/Camera/photo.jpg", storage: internalStorage.id))
+        let sdExpected = try #require(device.expectedContent("DCIM/Camera/photo.jpg", storage: sdStorage.id))
+        #expect(internalExpected != sdExpected)
+
+        let workspace = try Workspace()
+        let batch = try await workspace.batch(device, storageID: sdStorage.id, ["DCIM/Camera/photo.jpg"])
+        let totals = try await TransferSupervisor.mock(device, workspace: workspace).run(batchID: batch.id!)
+
+        #expect(totals.filesDone == 1)
+        let destinationURL = workspace.destination.appendingPathComponent("photo.jpg")
+        let copied = try Data(contentsOf: destinationURL)
+        #expect(copied == sdExpected)
+        #expect(copied != internalExpected)
+        try expectBatchMatchesDevice(workspace, device, batchID: batch.id!)
+    }
+
+    @Test func copyFromSecondStorageInterruptedByDisconnectResumesByteIdentical() async throws {
+        let internalStorage = StorageInfo(id: 0x0001_0001, description: "Internal shared storage", volumeIdentifier: nil, capacityBytes: 256 << 30, freeBytes: 128 << 30)
+        let sdStorage = StorageInfo(id: 0x0002_0001, description: "SD card", volumeIdentifier: nil, capacityBytes: 128 << 30, freeBytes: 64 << 30)
+        let device = MockDevice(storages: [internalStorage, sdStorage])
+        device.addFile("DCIM/Camera/photo.jpg", size: 100_000, seed: 111, storage: internalStorage.id)
+        device.addFile("DCIM/Camera/photo.jpg", size: 20 << 20, seed: 222, storage: sdStorage.id)
+
+        let reads = Counter()
+        device.setFaultInjector { point in
+            guard case .read = point else { return nil }
+            return reads.increment() == 3 ? .disconnect : nil
+        }
+
+        let workspace = try Workspace()
+        let batch = try await workspace.batch(device, storageID: sdStorage.id, ["DCIM/Camera/photo.jpg"])
+        var configuration = TestConfig.transfer
+        configuration.commitBytes = 8 << 20
+
+        let totals = try await TransferSupervisor.mock(device, workspace: workspace, configuration: configuration).run(batchID: batch.id!)
+        #expect(totals.filesDone == 1)
+        try expectBatchMatchesDevice(workspace, device, batchID: batch.id!)
+    }
+
+    @Test func copyFromSecondStoragePausesWhenStorageIDChangesOnReconnect() async throws {
+        let internalStorage = StorageInfo(id: 0x0001_0001, description: "Internal shared storage", volumeIdentifier: nil, capacityBytes: 256 << 30, freeBytes: 128 << 30)
+        let sdStorage = StorageInfo(id: 0x0002_0001, description: "SD card", volumeIdentifier: nil, capacityBytes: 128 << 30, freeBytes: 64 << 30)
+        let renumberedSD = StorageInfo(id: 0x0003_0001, description: "SD card", volumeIdentifier: nil, capacityBytes: 128 << 30, freeBytes: 64 << 30)
+        let device = MockDevice(storages: [internalStorage, sdStorage])
+        device.addFile("Music/song.mp3", size: 5_000_000, storage: sdStorage.id)
+
+        let workspace = try Workspace()
+        let batch = try await workspace.batch(device, storageID: sdStorage.id, ["Music/song.mp3"])
+
+        let events = EventLog()
+        let disconnected = Counter()
+        device.setFaultInjector { point in
+            guard case .read = point else { return nil }
+            return disconnected.increment() == 1 ? .disconnect : nil
+        }
+
+        let sleeps = Counter()
+        enum StopTest: Error { case paused }
+        let supervisor = TransferSupervisor.mock(device, workspace: workspace) {
+            if sleeps.increment() == 1 {
+                // When reconnected, the SD card has renumbered to 0x0003_0001.
+                device.setStorages([internalStorage, renumberedSD])
+            }
+            let hasUnavailable = events.waits.contains {
+                if case .storageUnavailable = $0 { true } else { false }
+            }
+            if hasUnavailable {
+                throw StopTest.paused
+            }
+        }
+
+        do {
+            _ = try await supervisor.run(batchID: batch.id!) { events.append($0) }
+        } catch is StopTest {}
+
+        let unavailable = events.waits.compactMap { reason -> String? in
+            if case .storageUnavailable(let detail) = reason { detail } else { nil }
+        }
+        #expect(unavailable.first?.contains("0x00020001") == true)
+    }
 }
 
 @Suite struct NameMapperTests {

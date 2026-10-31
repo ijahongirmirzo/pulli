@@ -402,6 +402,7 @@ struct GoMenuCommands: Commands {
             .disabled(AppDelegate.model?.canBrowsePhone != true)
 
             Button("Camera") {
+                AppDelegate.model?.switchToFirstStorage()
                 if let path = AppDelegate.model?.cameraFolderPath {
                     AppDelegate.model?.openFolderInBrowser(path)
                 }
@@ -409,6 +410,7 @@ struct GoMenuCommands: Commands {
             .disabled(AppDelegate.model?.cameraFolderPath == nil)
 
             Button("Screenshots") {
+                AppDelegate.model?.switchToFirstStorage()
                 if let path = AppDelegate.model?.screenshotsFolderPath {
                     AppDelegate.model?.openFolderInBrowser(path)
                 }
@@ -416,6 +418,7 @@ struct GoMenuCommands: Commands {
             .disabled(AppDelegate.model?.screenshotsFolderPath == nil)
 
             Button("Downloads") {
+                AppDelegate.model?.switchToFirstStorage()
                 if let path = AppDelegate.model?.downloadsFolderPath {
                     AppDelegate.model?.openFolderInBrowser(path)
                 }

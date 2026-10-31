@@ -13,15 +13,17 @@ final class DragOut: NSObject, NSFilePromiseProviderDelegate, @unchecked Sendabl
     }
 
     let items: [Item]
+    let storageID: UInt32?
     private weak var model: AppModel?
     private let lock = NSLock()
     private var requested: [(index: Int, url: URL, done: @Sendable ((any Error)?) -> Void)] = []
     private var scheduled = false
 
     @MainActor
-    init(model: AppModel, items: [Item]) {
+    init(model: AppModel, items: [Item], storageID: UInt32? = nil) {
         self.model = model
         self.items = items
+        self.storageID = storageID
     }
 
     /// A drag item per phone item, each promising its file (or folder).
@@ -66,7 +68,7 @@ final class DragOut: NSObject, NSFilePromiseProviderDelegate, @unchecked Sendabl
             return
         }
         let paths = batch.map { items[$0.index].path }
-        guard let id = await model.copy(paths: paths, destination: folder.path, navigate: false) else {
+        guard let id = await model.copy(paths: paths, storageID: storageID, destination: folder.path, navigate: false) else {
             batch.forEach { $0.done(CocoaError(.fileWriteUnknown)) }
             return
         }

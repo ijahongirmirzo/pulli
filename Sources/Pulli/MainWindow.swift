@@ -33,11 +33,31 @@ enum Route: Equatable {
         }
     }
 
-    var title: String? {
+    @MainActor
+    func title(in model: AppModel) -> String? {
         switch self {
         case .starting, .welcome, .failed: nil
         case .opening(let device), .overview(let device), .guide(let device), .busy(let device, _), .replug(let device): device.name
-        case .browse(_, let path): path == "/" ? "Internal storage" : (path as NSString).lastPathComponent
+        case .browse(let device, let path): path == "/" ? model.activeStorageName(for: device) : (path as NSString).lastPathComponent
+        case .storageMap: "Storage Map"
+        case .freeUp: "Free Up Space"
+        case .copying: "Copying"
+        case .paused(_, .queued): "Waiting"
+        case .paused: "Paused"
+        case .done(let batch): batch.phase == .completed ? "Copy finished" : "Copy stopped"
+        case .noCopies: "Copies"
+        case .history: "History"
+        case .attention: "Needs attention"
+        }
+    }
+
+    @MainActor
+    var title: String? {
+        if let model = AppDelegate.model { return title(in: model) }
+        return switch self {
+        case .starting, .welcome, .failed: nil
+        case .opening(let device), .overview(let device), .guide(let device), .busy(let device, _), .replug(let device): device.name
+        case .browse(let device, let path): path == "/" ? (device.storages.first?.displayName(isFirst: true) ?? "Internal storage") : (path as NSString).lastPathComponent
         case .storageMap: "Storage Map"
         case .freeUp: "Free Up Space"
         case .copying: "Copying"
@@ -204,7 +224,7 @@ struct MainWindow: View {
         case .guide(let device): "guide-\(device.id)"
         case .busy(let device, _): "busy-\(device.id)"
         case .replug(let device): "replug-\(device.id)"
-        case .browse(let device, let path): "browse-\(device.id)-\(path)"
+        case .browse(let device, let path): "browse-\(device.id)-\(model.activeStorageID(for: device.id) ?? 0)-\(path)"
         case .storageMap(let device): "map-\(device.id)"
         case .freeUp(let batch): "freeup-\(batch.id)"
         case .copying(let batch): "copying-\(batch.id)"
@@ -253,7 +273,7 @@ private struct TitleBar: View {
         ZStack {
             // A short note ("myGalaxy connected") takes the title's place for a few seconds:
             // the title bar has room, and nothing on the page is covered.
-            if model.connectedNote == nil, let title = route.title {
+            if model.connectedNote == nil, let title = route.title(in: model) {
                 Text(title).font(.pulli(13, .semibold)).foregroundStyle(tone.t2)
                     .accessibilityAddTraits(.isHeader)
                     .transition(.opacity)

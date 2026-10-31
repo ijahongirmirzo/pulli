@@ -130,27 +130,29 @@ extension AppModel {
         withAnimation(.pulliNavigation) { showingStorageMap = false }
     }
 
-    func rescanStorage() {
-        guard let client, let device, let storage = device.storages.first else { return }
+    func rescanStorage(storageID: UInt32? = nil) {
+        guard let client, let device else { return }
+        let storage = storageID ?? activeStorage(for: device)?.id ?? device.storages.first?.id
+        guard let storage else { return }
         if let old = storageScanID { Task { _ = try? await client.send(.cancelScan(scanID: old)) } }
         let id = UUID()
         storageScanID = id
         storageScan = nil
-        Task { _ = try? await client.send(.scanStorage(deviceID: device.id, storageID: storage.id, scanID: id)) }
+        Task { _ = try? await client.send(.scanStorage(deviceID: device.id, storageID: storage, scanID: id)) }
     }
 
     // MARK: Quick Look
 
     /// Previews a phone file with macOS Quick Look: the file is fetched into Pulli's cache first
     /// (at the cable's speed), then Space shows it like any file in Finder.
-    func quickLook(_ entry: FolderEntry, at path: String) {
-        fetchToCache(entry, at: path) { QuickLookPanel.shared.show($0) }
+    func quickLook(_ entry: FolderEntry, at path: String, storageID: UInt32? = nil) {
+        fetchToCache(entry, at: path, storageID: storageID) { QuickLookPanel.shared.show($0) }
     }
 
     /// Opens a phone file in its usual app, straight from the phone: it is streamed into Pulli's
     /// cache (nothing to manage), then opened. Changes made there stay on the Mac.
-    func openFile(_ entry: FolderEntry, at path: String, with app: URL? = nil) {
-        fetchToCache(entry, at: path) { local in
+    func openFile(_ entry: FolderEntry, at path: String, with app: URL? = nil, storageID: UInt32? = nil) {
+        fetchToCache(entry, at: path, storageID: storageID) { local in
             if let app {
                 NSWorkspace.shared.open([local], withApplicationAt: app, configuration: NSWorkspace.OpenConfiguration())
             } else {
@@ -159,10 +161,12 @@ extension AppModel {
         }
     }
 
-    private func fetchToCache(_ entry: FolderEntry, at path: String, then use: @escaping @MainActor (URL) -> Void) {
-        guard let client, let device, let storage = device.storages.first else { return }
+    private func fetchToCache(_ entry: FolderEntry, at path: String, storageID: UInt32? = nil, then use: @escaping @MainActor (URL) -> Void) {
+        guard let client, let device else { return }
+        let storage = storageID ?? activeStorage(for: device)?.id ?? device.storages.first?.id
+        guard let storage else { return }
         let caches = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("\(PulliApp.bundleID)/QuickLook/\(device.id.replacingOccurrences(of: ":", with: "_"))", isDirectory: true)
+            .appendingPathComponent("\(PulliApp.bundleID)/QuickLook/\(device.id.replacingOccurrences(of: ":", with: "_"))/\(storage)", isDirectory: true)
         let local = caches.appendingPathComponent(String(path.drop { $0 == "/" }))
         if let size = (try? local.resourceValues(forKeys: [.fileSizeKey]))?.fileSize, UInt64(size) == entry.sizeBytes {
             use(local)
@@ -172,7 +176,7 @@ extension AppModel {
         Task {
             defer { quickLookLoading = nil }
             do {
-                _ = try await client.send(.fetchFile(deviceID: device.id, storageID: storage.id, path: path, destination: local.path), timeout: .seconds(1_800))
+                _ = try await client.send(.fetchFile(deviceID: device.id, storageID: storage, path: path, destination: local.path), timeout: .seconds(1_800))
                 use(local)
             } catch {
                 banner = "Could not open \(entry.name): \(Self.describe(error))"
@@ -181,27 +185,29 @@ extension AppModel {
     }
 
     /// Copies phone items into a folder the user picks (the list's right-click menu).
-    func copy(_ paths: [String], chooseFolder: Bool) {
+    func copy(_ paths: [String], chooseFolder: Bool, storageID: UInt32? = nil) {
         let panel = NSOpenPanel()
         panel.canChooseDirectories = true
         panel.canChooseFiles = false
         panel.canCreateDirectories = true
         panel.prompt = "Copy Here"
         guard panel.runModal() == .OK, let folder = panel.url else { return }
-        Task { await copy(paths: paths, destination: folder.path) }
+        Task { await copy(paths: paths, storageID: storageID, destination: folder.path) }
     }
 
     // MARK: Mac to phone
 
-    func upload(_ urls: [URL], to folder: String) {
-        guard let client, let device, let storage = device.storages.first, !urls.isEmpty else { return }
+    func upload(_ urls: [URL], to folder: String, storageID: UInt32? = nil) {
+        guard let client, let device, !urls.isEmpty else { return }
+        let storage = storageID ?? activeStorage(for: device)?.id ?? device.storages.first?.id
+        guard let storage else { return }
         let id = UUID()
         uploads[id] = UploadProgress(uploadID: id, deviceID: device.id, destination: folder, filesDone: 0, filesTotal: urls.count,
                                      bytesDone: 0, bytesTotal: 0, current: urls.first?.lastPathComponent, done: false, error: nil)
         sounds.play(.start)
         Task {
             do {
-                _ = try await client.send(.upload(deviceID: device.id, storageID: storage.id, localPaths: urls.map(\.path), destination: folder, uploadID: id))
+                _ = try await client.send(.upload(deviceID: device.id, storageID: storage, localPaths: urls.map(\.path), destination: folder, uploadID: id))
             } catch {
                 uploads[id] = nil
                 banner = "Could not copy to the phone: \(Self.describe(error))"
@@ -209,14 +215,14 @@ extension AppModel {
         }
     }
 
-    func chooseFilesToUpload(to folder: String) {
+    func chooseFilesToUpload(to folder: String, storageID: UInt32? = nil) {
         let panel = NSOpenPanel()
         panel.canChooseFiles = true
         panel.canChooseDirectories = true
         panel.allowsMultipleSelection = true
         panel.prompt = "Copy to Phone"
         panel.message = "Choose files or folders to copy to \((folder as NSString).lastPathComponent) on \(device?.name ?? "the phone")"
-        if panel.runModal() == .OK { upload(panel.urls, to: folder) }
+        if panel.runModal() == .OK { upload(panel.urls, to: folder, storageID: storageID) }
     }
 
     // MARK: Free up space

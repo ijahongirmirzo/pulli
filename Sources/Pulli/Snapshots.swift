@@ -16,6 +16,7 @@ enum Snapshots {
         let scenarios: [(String, (AppModel) -> Void)] = [
             ("welcome", { $0.state.devices = [:]; $0.selectedDeviceID = nil }),
             ("overview", { _ in }),
+            ("overview-sd", { $0.state.devices[phone.id] = phoneWithSD }),
             ("overview-update", { _ in Updates.shared.available = "0.4.2" }),
             ("overview-connected-note", { $0.connectedNote = "myGalaxy connected · ready to copy" }),
             ("browse-connected-note", { $0.browsePath = "/DCIM/Camera"; $0.connectedNote = "myGalaxy connected · ready to copy" }),
@@ -24,6 +25,12 @@ enum Snapshots {
             ("guide-locked", { $0.state.devices[phone.id]?.state = .locked }),
             ("busy", { $0.state.devices[phone.id]?.state = .heldBy(appName: "Photos") }),
             ("browse", { $0.browsePath = "/DCIM/Camera" }),
+            ("browse-sd", {
+                $0.state.devices[phone.id] = phoneWithSD
+                $0.setActiveStorageID(0x20001, for: phone.id)
+                $0.browsePath = "/"
+                $0.previewListings = ["/": sdFiles]
+            }),
             ("copying", { $0.section = .copies; $0.focusedBatchID = 12 }),
             ("copying-chunk", { $0.section = .copies; $0.focusedBatchID = 12
                 $0.state.devices[phone.id]?.chunkSuggestion = ChunkSuggestion(deviceID: phone.id, currentMiB: 8, suggestedMiB: 2, failures: 3) }),
@@ -401,6 +408,22 @@ enum Snapshots {
         resumable: true,
         cable: CableAdvice(link: .usb2, phoneSupports: .usb3, throughHub: false, suggestion: .useUSB3Cable,
                            bytesPerSecond: 30_000_000, fasterBytesPerSecond: 90_000_000, measured: true))
+
+    static let phoneWithSD = DeviceSnapshot(
+        id: "04e8:R5CX00DEMO1", name: "myGalaxy", model: "Galaxy Z Fold7", manufacturer: "Samsung", link: .usb2,
+        linkBitsPerSecond: 480_000_000, state: .ready,
+        storages: [
+            StorageSnapshot(id: 0x10001, name: "Internal storage", capacityBytes: 234_900_000_000, freeBytes: 42_600_000_000),
+            StorageSnapshot(id: 0x20001, name: "SD card", capacityBytes: 128_000_000_000, freeBytes: 64_000_000_000),
+        ],
+        resumable: true,
+        cable: CableAdvice(link: .usb2, phoneSupports: .usb3, throughHub: false, suggestion: .useUSB3Cable,
+                           bytesPerSecond: 30_000_000, fasterBytesPerSecond: 90_000_000, measured: true))
+
+    static let sdFiles: [FolderEntry] = [
+        FolderEntry(name: "DCIM", isFolder: true, sizeBytes: 0, modifiedWallClock: 1_788_000_000),
+        FolderEntry(name: "Music", isFolder: true, sizeBytes: 0, modifiedWallClock: 1_788_000_000),
+    ]
 
     static let cameraFiles: [FolderEntry] = (0..<74).map { index in
         let video = index % 9 == 4

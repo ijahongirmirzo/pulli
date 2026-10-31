@@ -152,6 +152,15 @@ public struct StorageInfo: Sendable, Hashable, Codable, Identifiable {
         self.capacityBytes = capacityBytes
         self.freeBytes = freeBytes
     }
+
+    /// User-facing display name for this storage.
+    public func displayName(isFirst: Bool) -> String {
+        let trimmed = description.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty { return isFirst ? "Internal storage" : "SD card" }
+        let lower = trimmed.lowercased()
+        if lower.contains("internal") || lower.contains("phone") { return "Internal storage" }
+        return trimmed
+    }
 }
 
 /// A file name compared byte for byte.

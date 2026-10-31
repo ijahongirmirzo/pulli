@@ -203,6 +203,7 @@ struct PausedView: View {
         case .destinationUnavailable: "The destination is not available"
         case .retrying(let seconds, _): "Trying again in \(Format.duration(Double(seconds)))"
         case .queued: "Waiting for the copy before it"
+        case .storageUnavailable: "Storage not available"
         case .unknown: "Paused"
         }
     }
@@ -227,6 +228,7 @@ struct PausedView: View {
         case .destinationUnavailable(let detail): "Pulli cannot write to \(Format.place(batch.destinationPath)): \(detail). Reconnect the disk or choose another place."
         case .retrying(_, let detail): "The phone did not answer (\(detail)). Pulli tries again by itself."
         case .queued: "One phone copies one thing at a time. This copy starts as soon as the one before it finishes."
+        case .storageUnavailable: "The SD card or storage this copy reads from is not available. Put it back, or reconnect the phone, and Pulli carries on."
         case .unknown: "Pulli continues by itself when it can."
         }
     }
@@ -244,6 +246,7 @@ struct PausedView: View {
         case .byUser: "Paused by you"
         case .phoneDisconnected: "Waiting for \(batch.deviceName) · the Mac stays awake"
         case .queued: "In line"
+        case .storageUnavailable: "Waiting for storage"
         default: "Waiting"
         }
     }

@@ -87,6 +87,7 @@ struct BrowseView: View {
     static let rowHeight: CGFloat = 40
     static let gridInset: CGFloat = 14
 
+    private var activeStorageID: UInt32? { model.activeStorageID(for: device.id) }
     private var options: BrowseOptions { model.browseOptions }
 
     private func layout(count: Int) -> ItemLayout {
@@ -154,7 +155,7 @@ struct BrowseView: View {
             .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width = $0 }
             .overlay { if dropTargeted { dropOverlay } }
             .panel(radius: 22)
-            .modifier(DropFiles(enabled: !isSnapshot) { providers in model.receive(providers, into: path) } targeted: { dropTargeted = $0 })
+            .modifier(DropFiles(enabled: !isSnapshot) { providers in model.receive(providers, into: path, storageID: activeStorageID) } targeted: { dropTargeted = $0 })
             .animation(.easeOut(duration: 0.2), value: dropTargeted)
             .padding(.horizontal, 32).padding(.top, 16)
             footer
@@ -218,21 +219,22 @@ struct BrowseView: View {
         let currentFolder = path
         let currentClipboardPaths = clipboardPaths(currentVisible)
         let currentSelectionPaths = Array(selection.keys).sorted()
+        let currentStorageID = activeStorageID
         let fullPath: @Sendable (String) -> String = { name in currentFolder == "/" ? "/" + name : currentFolder + "/" + name }
 
         return BrowseCommands(
             hasSelection: !selection.isEmpty,
             copySelected: {
                 guard !currentSelectionPaths.isEmpty else { return }
-                Task { await model.copy(paths: currentSelectionPaths) }
+                Task { await model.copy(paths: currentSelectionPaths, storageID: currentStorageID) }
             },
             canCopy: !currentClipboardPaths.isEmpty,
             copy: {
-                if !currentClipboardPaths.isEmpty { model.copyToClipboard(currentClipboardPaths) }
+                if !currentClipboardPaths.isEmpty { model.copyToClipboard(currentClipboardPaths, storageID: currentStorageID) }
             },
             canPaste: model.clipboardHasSomethingForPhone,
             paste: {
-                model.pasteFromClipboard(into: currentFolder)
+                model.pasteFromClipboard(into: currentFolder, storageID: currentStorageID)
             },
             canSelectAll: !currentVisible.isEmpty,
             selectAll: {
@@ -261,7 +263,7 @@ struct BrowseView: View {
 
     private func copySelection() {
         guard !selection.isEmpty else { return }
-        Task { await model.copy(paths: Array(selection.keys).sorted()) }
+        Task { await model.copy(paths: Array(selection.keys).sorted(), storageID: activeStorageID) }
     }
 
     private func setLayout(_ layout: BrowseOptions.Layout) {
@@ -280,8 +282,8 @@ struct BrowseView: View {
                   hover: { hoverRow = $0 },
                   dragItems: { dragItems(rows, from: $0, layout: layout) },
                   menu: { menu(rows, row: $0) },
-                  copyItems: clipboardPaths(rows).isEmpty ? nil : { model.copyToClipboard(clipboardPaths(rows)) },
-                  pasteItems: { model.pasteFromClipboard(into: path) })
+                  copyItems: clipboardPaths(rows).isEmpty ? nil : { model.copyToClipboard(clipboardPaths(rows), storageID: activeStorageID) },
+                  pasteItems: { model.pasteFromClipboard(into: path, storageID: activeStorageID) })
     }
 
     /// A click: only the tick box ticks (⌘-click ticks any row too, folders without opening them;
@@ -292,7 +294,7 @@ struct BrowseView: View {
         let entry = rows[position]
         let path = full(entry.name)
         if count >= 2 {
-            if !entry.isFolder, !onTick { model.openFile(entry, at: path) }
+            if !entry.isFolder, !onTick { model.openFile(entry, at: path, storageID: activeStorageID) }
             return
         }
         if flags.contains(.shift), let anchor, rows.indices.contains(anchor) {
@@ -328,7 +330,7 @@ struct BrowseView: View {
             ? selection.sorted { $0.key < $1.key }.map { ($0.key, $0.value) }
             : [(start, rows[position])]
         let items = chosen.map { DragOut.Item(path: $0.0, entry: $0.1) }
-        let delivery = DragOut(model: model, items: items)
+        let delivery = DragOut(model: model, items: items, storageID: activeStorageID)
         model.dragOuts.insert(delivery)
         let frames = chosen.map { path, _ -> NSRect in
             let index = rows.firstIndex { full($0.name) == path } ?? position
@@ -350,24 +352,24 @@ struct BrowseView: View {
         if entry.isFolder {
             menu.addItem(ClosureMenuItem("Open", symbol: "folder") { model.browse(to: path) })
         } else {
-            menu.addItem(ClosureMenuItem("Open", symbol: "arrow.up.forward.app") { model.openFile(entry, at: path) })
+            menu.addItem(ClosureMenuItem("Open", symbol: "arrow.up.forward.app") { model.openFile(entry, at: path, storageID: activeStorageID) })
             menu.addItem(openWithItem(entry, path: path))
-            menu.addItem(ClosureMenuItem("Quick Look", symbol: "eye") { model.quickLook(entry, at: path) })
+            menu.addItem(ClosureMenuItem("Quick Look", symbol: "eye") { model.quickLook(entry, at: path, storageID: activeStorageID) })
         }
         menu.addItem(.separator())
         let targets = selection[path] != nil && selection.count > 1 ? selection.keys.sorted() : [path]
         let what = targets.count > 1 ? "\(targets.count) Items" : "\u{201C}\(entry.name)\u{201D}"
         menu.addItem(ClosureMenuItem("Copy \(what) to \(Format.place(model.destination))", symbol: "arrow.down.to.line") {
-            Task { await model.copy(paths: targets) }
+            Task { await model.copy(paths: targets, storageID: activeStorageID) }
         })
-        menu.addItem(ClosureMenuItem("Copy \(what) To…", symbol: "folder.badge.plus") { model.copy(targets, chooseFolder: true) })
-        let clipboard = ClosureMenuItem(targets.count > 1 ? "Copy \(targets.count) Items" : "Copy", symbol: "doc.on.clipboard") { model.copyToClipboard(targets) }
+        menu.addItem(ClosureMenuItem("Copy \(what) To…", symbol: "folder.badge.plus") { model.copy(targets, chooseFolder: true, storageID: activeStorageID) })
+        let clipboard = ClosureMenuItem(targets.count > 1 ? "Copy \(targets.count) Items" : "Copy", symbol: "doc.on.clipboard") { model.copyToClipboard(targets, storageID: activeStorageID) }
         clipboard.keyEquivalent = "c"
         clipboard.keyEquivalentModifierMask = .command
         menu.addItem(clipboard)
         if model.clipboardHasSomethingForPhone {
             let paste = ClosureMenuItem("Paste into \(path == "/" ? device.name : (path as NSString).lastPathComponent)", symbol: "doc.on.clipboard.fill") {
-                model.pasteFromClipboard(into: path)
+                model.pasteFromClipboard(into: path, storageID: activeStorageID)
             }
             paste.keyEquivalent = "v"
             paste.keyEquivalentModifierMask = .command
@@ -397,7 +399,7 @@ struct BrowseView: View {
         for (index, app) in ordered.prefix(20).enumerated() {
             let name = FileManager.default.displayName(atPath: app.path).replacingOccurrences(of: ".app", with: "")
             let appItem = ClosureMenuItem(index == 0 && preferred != nil ? "\(name) (default)" : name) {
-                model.openFile(entry, at: path, with: app)
+                model.openFile(entry, at: path, with: app, storageID: activeStorageID)
             }
             let icon = NSWorkspace.shared.icon(forFile: app.path)
             icon.size = NSSize(width: 16, height: 16)
@@ -488,20 +490,67 @@ struct BrowseView: View {
 
     private func full(_ name: String) -> String { path == "/" ? "/" + name : path + "/" + name }
 
+    @ViewBuilder
+    private var storageCrumb: some View {
+        let parts = path.split(separator: "/").map(String.init)
+        let active = model.activeStorage(for: device) ?? device.storages.first
+        let isFirst = active.map { $0.id == device.storages.first?.id } ?? true
+        let activeName = active.map { StorageDisplayName.name(for: $0.name, isFirst: isFirst) } ?? "Internal storage"
+        if device.storages.count > 1 {
+            Menu {
+                ForEach(device.storages) { storage in
+                    let first = storage.id == device.storages.first?.id
+                    let name = StorageDisplayName.name(for: storage.name, isFirst: first)
+                    Button {
+                        guard model.activeStorageID(for: device.id) != storage.id else {
+                            if path != "/" { model.browse(to: "/") }
+                            return
+                        }
+                        selection.removeAll()
+                        onMac.removeAll()
+                        model.setActiveStorageID(storage.id, for: device.id)
+                        model.openBrowser(at: "/")
+                    } label: {
+                        if storage.id == active?.id {
+                            Label(name, systemImage: "checkmark")
+                        } else {
+                            Text(name)
+                        }
+                    }
+                }
+            } label: {
+                HStack(spacing: 3) {
+                    Text(activeName)
+                        .fontWeight(parts.isEmpty ? .semibold : .regular)
+                        .foregroundStyle(parts.isEmpty ? tone.t1 : tone.t2)
+                    Image(systemName: "chevron.up.chevron.down")
+                        .font(.system(size: 8, weight: .bold))
+                        .foregroundStyle(tone.t3)
+                }
+            }
+            .menuStyle(.button)
+            .buttonStyle(.plain)
+            .menuIndicator(.hidden)
+            .fixedSize()
+        } else {
+            crumb(activeName, target: "/", last: parts.isEmpty)
+        }
+    }
+
     private var pathBar: some View {
         let parts = path.split(separator: "/").map(String.init)
         return HStack(spacing: 7) {
             Image(systemName: "iphone.gen3").font(.system(size: 13, weight: .semibold))
             crumb(device.name, target: nil)
             Image(systemName: "chevron.right").font(.system(size: 10, weight: .bold)).foregroundStyle(tone.t3)
-            crumb("Internal storage", target: "/", last: parts.isEmpty)
+            storageCrumb
             ForEach(Array(parts.enumerated()), id: \.offset) { index, part in
                 Image(systemName: "chevron.right").font(.system(size: 10, weight: .bold)).foregroundStyle(tone.t3)
                 crumb(part, target: "/" + parts[...index].joined(separator: "/"), last: index == parts.count - 1)
             }
             Spacer()
             viewControls
-            Button { model.chooseFilesToUpload(to: path) } label: { Label("Add…", systemImage: "square.and.arrow.up") }
+            Button { model.chooseFilesToUpload(to: path, storageID: activeStorageID) } label: { Label("Add…", systemImage: "square.and.arrow.up") }
                 .buttonStyle(PillButtonStyle(small: true))
                 .help("Copy files from your Mac into this folder on the phone. You can also drop them here.")
             Button("Select All") {
@@ -642,7 +691,7 @@ struct BrowseView: View {
     private func row(_ entry: FolderEntry, partly: Set<String>, focused: Bool, hovered: Bool) -> some View {
         let fullPath = full(entry.name)
         let state: CheckBox.State = selection[fullPath] != nil ? .on : (partly.contains(fullPath) ? .mixed : .off)
-        let storage = device.storages.first?.id ?? 0
+        let storage = activeStorageID ?? device.storages.first?.id ?? 0
         return BrowseRow(entry: entry, state: state, kind: entry.isFolder ? "Folder" : kindName(entry), focused: focused, hovering: hovered,
                          onMac: onMac[fullPath] != nil,
                          preview: entry.isFolder ? nil : (device.id, storage, fullPath, entry),
@@ -653,7 +702,7 @@ struct BrowseView: View {
     private func cell(_ entry: FolderEntry, partly: Set<String>, focused: Bool, hovered: Bool) -> some View {
         let fullPath = full(entry.name)
         let state: CheckBox.State = selection[fullPath] != nil ? .on : (partly.contains(fullPath) ? .mixed : .off)
-        let storage = device.storages.first?.id ?? 0
+        let storage = activeStorageID ?? device.storages.first?.id ?? 0
         return BrowseCell(entry: entry, state: state, iconSize: CGFloat(options.iconSize),
                           detail: entry.isFolder ? "Folder" : Format.bytes(entry.sizeBytes),
                           focused: focused, hovering: hovered, showTick: hovered || state != .off || !selection.isEmpty,
@@ -738,7 +787,7 @@ struct BrowseView: View {
         failure = nil
         loading = true
         defer { loading = false }
-        guard let stream = await model.list(path) else {
+        guard let stream = await model.list(path, storageID: activeStorageID) else {
             failure = "The phone is not available."
             return
         }
@@ -760,7 +809,8 @@ struct BrowseView: View {
     /// Settings › Skip files already on my Mac: mark files whose content is already there.
     private func findDuplicates() async {
         onMac = [:]
-        guard UserDefaults.standard.object(forKey: "skipDuplicates") as? Bool ?? true, let storage = device.storages.first else { return }
+        guard UserDefaults.standard.object(forKey: "skipDuplicates") as? Bool ?? true,
+              let storage = model.activeStorage(for: device) ?? device.storages.first else { return }
         let files = entries.filter { !$0.isFolder && !$0.name.hasPrefix(".") }.map { full($0.name) }
         let matches = await model.findDuplicates(deviceID: device.id, storageID: storage.id, paths: files)
         guard !Task.isCancelled else { return }

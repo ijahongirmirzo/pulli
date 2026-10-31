@@ -97,6 +97,8 @@ final class AppModel {
     var connection: Connection = .starting
     var section: Section = .phone
     var selectedDeviceID: String?
+    /// Active storage per phone ID (defaults to the first storage).
+    var activeStorageIDs: [String: UInt32] = [:]
     /// Non-nil while browsing a folder on the phone (the Choose screen).
     var browsePath: String?
     /// Where browsing started (a card's folder, or the top of the phone): Back from here returns
@@ -446,6 +448,7 @@ final class AppModel {
         for id in disconnected { unmountFinderDrive(id) }
         for id in old.devices.keys where new.devices[id] == nil {
             repairedPhones.remove(id)
+            activeStorageIDs.removeValue(forKey: id)
             if finderTrouble == id { finderTrouble = nil }
         }
         for id in summaries.keys where new.devices[id] == nil {
@@ -526,6 +529,38 @@ final class AppModel {
     }
 
     var device: DeviceSnapshot? { selectedDeviceID.flatMap { state.devices[$0] } }
+
+    /// Active storage for a device, falling back to the first if the ID disappeared.
+    func activeStorage(for device: DeviceSnapshot) -> StorageSnapshot? {
+        guard !device.storages.isEmpty else { return nil }
+        if let id = activeStorageIDs[device.id], let match = device.storages.first(where: { $0.id == id }) {
+            return match
+        }
+        return device.storages.first
+    }
+
+    /// Active storage ID for a device by its ID.
+    func activeStorageID(for deviceID: String) -> UInt32? {
+        guard let device = state.devices[deviceID] else { return nil }
+        return activeStorage(for: device)?.id
+    }
+
+    /// Switches the active storage for a device.
+    func setActiveStorageID(_ storageID: UInt32, for deviceID: String) {
+        activeStorageIDs[deviceID] = storageID
+    }
+
+    /// Display name for the active storage of a device.
+    func activeStorageName(for device: DeviceSnapshot) -> String {
+        guard let active = activeStorage(for: device) else { return "Internal storage" }
+        return active.displayName(isFirst: active.id == device.storages.first?.id)
+    }
+
+    /// Switches the current device back to its first storage.
+    func switchToFirstStorage() {
+        guard let device, let first = device.storages.first else { return }
+        setActiveStorageID(first.id, for: device.id)
+    }
 
     var sortedDevices: [DeviceSnapshot] { state.devices.values.sorted { $0.name < $1.name } }
 
@@ -636,7 +671,8 @@ final class AppModel {
         guard let current = browsePath else { return nil }
         if current == browseRoot || current == "/" { return device?.name ?? "Phone" }
         let parent = (current as NSString).deletingLastPathComponent
-        return parent == "/" ? "Internal storage" : (parent as NSString).lastPathComponent
+        let rootName = device.map { activeStorageName(for: $0) } ?? "Internal storage"
+        return parent == "/" ? rootName : (parent as NSString).lastPathComponent
     }
 
     private func depth(_ path: String) -> Int { path.split(separator: "/").count }
@@ -697,9 +733,11 @@ final class AppModel {
     }
 
     /// Lists one folder for the Choose screen, page by page.
-    func list(_ path: String) async -> AsyncStream<PulliClient.FolderPage>? {
-        guard let client, let device, let storage = device.storages.first else { return nil }
-        return try? await client.listFolder(deviceID: device.id, storageID: storage.id, path: path)
+    func list(_ path: String, storageID: UInt32? = nil) async -> AsyncStream<PulliClient.FolderPage>? {
+        guard let client, let device else { return nil }
+        let storage = storageID ?? activeStorage(for: device)?.id ?? device.storages.first?.id
+        guard let storage else { return nil }
+        return try? await client.listFolder(deviceID: device.id, storageID: storage, path: path)
     }
 
     /// Paths and bytes the phone screen's current picks would copy.
@@ -753,7 +791,7 @@ final class AppModel {
     /// Starts a copy. Drags to Finder pass their drop folder and stay on the current screen.
     @discardableResult
     func copy(paths: [String], storageID: UInt32? = nil, destination explicit: String? = nil, navigate: Bool = true) async -> Int64? {
-        guard let client, let device, let storage = storageID ?? device.storages.first?.id else { return nil }
+        guard let client, let device, let storage = storageID ?? activeStorage(for: device)?.id ?? device.storages.first?.id else { return nil }
         let request = CreateBatchRequest(deviceID: device.id, storageID: storage, paths: paths, destinationPath: explicit ?? destination,
                                          organize: explicit == nil ? state.settings.organize : nil)
         do {
