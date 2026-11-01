@@ -6,6 +6,32 @@
         <description>Most recent updates to Pulli.</description>
         <language>en</language>
         <item>
+            <title>Version 0.5.0</title>
+            <sparkle:version>20261101184235</sparkle:version>
+            <sparkle:shortVersionString>0.5.0</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
+            <pubDate>Sun, 01 Nov 2026 13:44:47 +0000</pubDate>
+            <description><![CDATA[
+<p>SD cards: browse and copy from your phone&#x27;s microSD card.</p>
+<ul>
+<li><b>Your SD card in Pulli.</b> If your phone has a microSD card, it now gets its own card on the phone page. Browse it like any other folder, tick what you want, and copy it to your Mac. Thanks to @ilkerorbay for asking.</li>
+<li><b>Switch storage.</b> Click the storage name in the path bar to move between Internal storage and SD card, in the browser and in Storage Map.</li>
+<li><b>Both storages in Finder.</b> On a phone with a card, Finder shows a folder for each storage.</li>
+<li><b>Safe if the card goes away.</b> If the card is removed during a copy, Pulli pauses and says so, and carries on when the card is back.</li>
+<li><b>Clearer wording.</b> When another app may be using your phone, Pulli now says &quot;may be holding your phone&quot;.</li>
+</ul>
+<p>Nothing changes on phones without an SD card. SD card support was tested with a simulated phone, so if something looks wrong on your card, please open an issue.</p>
+<p><b>Which Macs:</b> every Mac with Apple silicon - an M1 chip or newer - running macOS 26 Tahoe or later. Intel Macs are not supported.</p>
+<p><b>Install or update:</b> Pulli updates itself. New here? Open the disk image and drag Pulli to Applications, or use Homebrew: `brew install --cask ijahongirmirzo/tap/pulli`</p>
+            ]]></description>
+            <enclosure
+                url="https://github.com/ijahongirmirzo/pulli/releases/download/v0.5.0/Pulli-0.5.0.dmg"
+                length="19162458"
+                type="application/octet-stream"
+                sparkle:edSignature="EYBPguCLSZ2GE0Y6PQmDyna0+25xQwUj7seB1+BUQ/gJYPyv+DSKCOY/VL+pyJS46fYIc0aTmJhO8cKxlqiTBA==" />
+        </item>
+
+        <item>
             <title>Version 0.4.4</title>
             <sparkle:version>20261022102637</sparkle:version>
             <sparkle:shortVersionString>0.4.4</sparkle:shortVersionString>
