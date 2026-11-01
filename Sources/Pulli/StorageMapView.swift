@@ -15,12 +15,19 @@ struct StorageMapView: View {
     @State private var selected: StorageNode?
     @State private var selectedTrail: [String] = []
 
+    /// Names the storage when the phone has several, as the map shows only one of them.
+    private var heading: String {
+        guard device.storages.count > 1 else { return "What's filling \(device.name)" }
+        let name = model.activeStorageName(for: device)
+        return "What's filling the \(name == "Internal storage" ? "internal storage" : name)"
+    }
+
     var body: some View {
         let scan = model.storageScan
         let node = current(scan?.root)
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .firstTextBaseline) {
-                Text("What's filling \(device.name)").font(.pulli(26, .medium)).lineLimit(1)
+                Text(heading).font(.pulli(26, .medium)).lineLimit(1)
                 Spacer(minLength: 12)
                 Text(status(scan)).font(.pulli(13)).foregroundStyle(tone.t2).monospacedDigit().lineLimit(1)
             }

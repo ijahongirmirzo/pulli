@@ -1,7 +1,12 @@
-Two small fixes for smoother copies.
+SD cards: browse and copy from your phone's microSD card.
 
-- **A steady speed after a resume.** When a copy carries on after a pulled cable, a pause or a restart, the speed no longer jumps to a silly number for a moment. Pulli now counts only what it has read from the phone since resuming, and shows the speed once it has a real measurement.
-- **Real folder dates.** Folders in Pulli's browser now show the date the phone gives them, and anything the phone gives no date shows "-" in Pulli and in Finder, never 1 January 1970.
+- **Your SD card in Pulli.** If your phone has a microSD card, it now gets its own card on the phone page. Browse it like any other folder, tick what you want, and copy it to your Mac. Thanks to @ilkerorbay for asking.
+- **Switch storage.** Click the storage name in the path bar to move between Internal storage and SD card, in the browser and in Storage Map.
+- **Both storages in Finder.** On a phone with a card, Finder shows a folder for each storage.
+- **Safe if the card goes away.** If the card is removed during a copy, Pulli pauses and says so, and carries on when the card is back.
+- **Clearer wording.** When another app may be using your phone, Pulli now says "may be holding your phone".
+
+Nothing changes on phones without an SD card. SD card support was tested with a simulated phone, so if something looks wrong on your card, please open an issue.
 
 **Which Macs:** every Mac with Apple silicon - an M1 chip or newer - running macOS 26 Tahoe or later. Intel Macs are not supported.
 

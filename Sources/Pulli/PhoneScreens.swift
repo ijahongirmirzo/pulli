@@ -519,7 +519,7 @@ struct BusyView: View {
 
     private var titleText: String {
         if let running = runningClient {
-            return "\(running.app.displayName) keeps taking the phone"
+            return "\(running.app.displayName) may be holding your phone"
         }
         let name = isSystemDaemon ? CameraClientApps.photoServiceName : app
         return "\(name) is using your phone"
