@@ -6,6 +6,31 @@
         <description>Most recent updates to Pulli.</description>
         <language>en</language>
         <item>
+            <title>Version 0.5.1</title>
+            <sparkle:version>20261102064512</sparkle:version>
+            <sparkle:shortVersionString>0.5.1</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
+            <pubDate>Mon, 02 Nov 2026 01:48:16 +0000</pubDate>
+            <description><![CDATA[
+<p>Steadier big copies, after a real test of almost 48 GB from an SD card. Thanks to @ilkerorbay for the detailed report.</p>
+<ul>
+<li><b>Memory stays flat.</b> On long copies Pulli kept copied data in memory, which could fill your Mac&#x27;s memory. It now stays flat however much you copy.</li>
+<li><b>Fewer false alarms.</b> A file could be reported as &quot;no longer on the phone&quot; when the phone was only slow to answer. Pulli now checks again before saying so.</li>
+<li><b>Pausing is not a failure.</b> Pausing during a read no longer counts as a failed read, so it no longer leads to a suggestion to use smaller chunks.</li>
+<li><b>Starting a copy recovers by itself.</b> If the connection to the phone has just dropped, Pulli reconnects and tries once more before showing an error.</li>
+<li><b>Try Again is easier to find.</b> When files need attention, the button is now on the finished screen too.</li>
+</ul>
+<p><b>Which Macs:</b> every Mac with Apple silicon - an M1 chip or newer - running macOS 26 Tahoe or later. Intel Macs are not supported.</p>
+<p><b>Install or update:</b> Pulli updates itself. New here? Open the disk image and drag Pulli to Applications, or use Homebrew: `brew install --cask ijahongirmirzo/tap/pulli`</p>
+            ]]></description>
+            <enclosure
+                url="https://github.com/ijahongirmirzo/pulli/releases/download/v0.5.1/Pulli-0.5.1.dmg"
+                length="19169013"
+                type="application/octet-stream"
+                sparkle:edSignature="P4GPQ/9SVVB5tR/lqw2VMDgiCFUrd6G39JfbeCQnEiWCfe36WwhknahT0z3lMRYSoDPX3ckp3yGVb3Gbs4y5Bw==" />
+        </item>
+
+        <item>
             <title>Version 0.5.0</title>
             <sparkle:version>20261101184235</sparkle:version>
             <sparkle:shortVersionString>0.5.0</sparkle:shortVersionString>
