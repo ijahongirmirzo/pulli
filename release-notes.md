@@ -1,12 +1,10 @@
-SD cards: browse and copy from your phone's microSD card.
+Steadier big copies, after a real test of almost 48 GB from an SD card. Thanks to @ilkerorbay for the detailed report.
 
-- **Your SD card in Pulli.** If your phone has a microSD card, it now gets its own card on the phone page. Browse it like any other folder, tick what you want, and copy it to your Mac. Thanks to @ilkerorbay for asking.
-- **Switch storage.** Click the storage name in the path bar to move between Internal storage and SD card, in the browser and in Storage Map.
-- **Both storages in Finder.** On a phone with a card, Finder shows a folder for each storage.
-- **Safe if the card goes away.** If the card is removed during a copy, Pulli pauses and says so, and carries on when the card is back.
-- **Clearer wording.** When another app may be using your phone, Pulli now says "may be holding your phone".
-
-Nothing changes on phones without an SD card. SD card support was tested with a simulated phone, so if something looks wrong on your card, please open an issue.
+- **Memory stays flat.** On long copies Pulli kept copied data in memory, which could fill your Mac's memory. It now stays flat however much you copy.
+- **Fewer false alarms.** A file could be reported as "no longer on the phone" when the phone was only slow to answer. Pulli now checks again before saying so.
+- **Pausing is not a failure.** Pausing during a read no longer counts as a failed read, so it no longer leads to a suggestion to use smaller chunks.
+- **Starting a copy recovers by itself.** If the connection to the phone has just dropped, Pulli reconnects and tries once more before showing an error.
+- **Try Again is easier to find.** When files need attention, the button is now on the finished screen too.
 
 **Which Macs:** every Mac with Apple silicon - an M1 chip or newer - running macOS 26 Tahoe or later. Intel Macs are not supported.
 
