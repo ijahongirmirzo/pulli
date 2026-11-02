@@ -96,8 +96,11 @@ public struct BatchRunner: Sendable {
                     case .rejected, .notFound, .unsupported:
                         try giveUp(job, error.description, events: events)
                     case .transient, .staleHandle:
-                        events(.readFailed(job, error))
-                        try journal.recordFailure(jobID: job.id!, message: error.description, countsAsAttempt: true)
+                        // Pausing abandons the read in flight: the phone did nothing wrong.
+                        if !Task.isCancelled {
+                            events(.readFailed(job, error))
+                            try journal.recordFailure(jobID: job.id!, message: error.description, countsAsAttempt: true)
+                        }
                         throw error
                     case .deviceGone, .noStorage, .noMTPInterface, .contended:
                         throw error

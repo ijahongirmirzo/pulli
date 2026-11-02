@@ -115,16 +115,21 @@ public final class FrameChannel: @unchecked Sendable {
     }
 
     /// The next frame, or `FrameError.closed` at end of input.
+    ///
+    /// Callers loop on a plain `Thread`, which has no autorelease pool of its own: without this
+    /// one, every byte read from the pipe stays in memory until the worker ends.
     public func read<Header: Codable & Sendable>(_ type: Header.Type) throws -> WorkerFrame<Header> {
-        let lengthBytes = try readExactly(4)
-        let total = Int(lengthBytes.withUnsafeBytes { UInt32(bigEndian: $0.loadUnaligned(as: UInt32.self)) })
-        guard total >= 4, total <= Self.maxFrame else { throw FrameError.malformed("frame of \(total) bytes") }
-        let body = try readExactly(total)
-        let headerLength = Int(body.prefix(4).withUnsafeBytes { UInt32(bigEndian: $0.loadUnaligned(as: UInt32.self)) })
-        guard headerLength <= total - 4 else { throw FrameError.malformed("header of \(headerLength) bytes") }
-        let headerData = body.subdata(in: 4..<(4 + headerLength))
-        let envelope = try JSONDecoder().decode(Envelope<Header>.self, from: headerData)
-        return WorkerFrame(id: envelope.id, header: envelope.header, payload: body.subdata(in: (4 + headerLength)..<total))
+        try autoreleasepool {
+            let lengthBytes = try readExactly(4)
+            let total = Int(lengthBytes.withUnsafeBytes { UInt32(bigEndian: $0.loadUnaligned(as: UInt32.self)) })
+            guard total >= 4, total <= Self.maxFrame else { throw FrameError.malformed("frame of \(total) bytes") }
+            let body = try readExactly(total)
+            let headerLength = Int(body.prefix(4).withUnsafeBytes { UInt32(bigEndian: $0.loadUnaligned(as: UInt32.self)) })
+            guard headerLength <= total - 4 else { throw FrameError.malformed("header of \(headerLength) bytes") }
+            let headerData = body.subdata(in: 4..<(4 + headerLength))
+            let envelope = try JSONDecoder().decode(Envelope<Header>.self, from: headerData)
+            return WorkerFrame(id: envelope.id, header: envelope.header, payload: body.subdata(in: (4 + headerLength)..<total))
+        }
     }
 
     private func readExactly(_ count: Int) throws -> Data {

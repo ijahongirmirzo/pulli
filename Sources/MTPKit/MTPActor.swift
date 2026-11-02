@@ -42,7 +42,8 @@ final class DedicatedThreadExecutor: SerialExecutor, @unchecked Sendable {
             jobs.removeAll(keepingCapacity: true)
             condition.unlock()
             for job in batch {
-                job.runSynchronously(on: asUnownedSerialExecutor())
+                // A plain Thread has no autorelease pool of its own.
+                autoreleasepool { job.runSynchronously(on: asUnownedSerialExecutor()) }
             }
         }
     }

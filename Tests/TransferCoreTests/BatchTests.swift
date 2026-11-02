@@ -301,6 +301,31 @@ import TransferCore
         try expectBatchMatchesDevice(workspace, device, batchID: batch.id!)
     }
 
+    /// The app's worker reports a read abandoned by Pause as a transient error.
+    @Test func pausingDuringAReadIsNotAFailedRead() async throws {
+        let device = MockDevice()
+        device.addFile("DCIM/a.jpg", size: 100)
+        let workspace = try Workspace()
+        let batch = try await workspace.batch(device, [RemotePath("DCIM")])
+        device.setFaultInjector { point in
+            guard case .read = point else { return nil }
+            withUnsafeCurrentTask { $0?.cancel() }
+            return .transient
+        }
+
+        let failures = Counter()
+        let runner = BatchRunner(session: try device.connect(), journal: workspace.journal, sink: POSIXFileSink(), configuration: TestConfig.transfer)
+        let task = Task {
+            try await runner.run(batchID: batch.id!) { event in
+                if case .readFailed = event { _ = failures.increment() }
+            }
+        }
+        _ = await task.result
+
+        #expect(failures.current == 0)
+        #expect(try workspace.journal.jobs(batchID: batch.id!).allSatisfy { $0.attempts == 0 && $0.lastError == nil })
+    }
+
     @Test func clearHistoryRemovesCompletedBatchesAndReclaimsJournalBytes() async throws {
         let device = MockDevice()
         let privateName = "PRIVATE_NAME_123.jpg"

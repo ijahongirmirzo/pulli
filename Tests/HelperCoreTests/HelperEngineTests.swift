@@ -149,6 +149,24 @@ private func samplePhone(serial: String = "PHONE-A", big: UInt64 = 9 << 20) -> M
         await harness.stopEngine()
     }
 
+    /// The session shared with the browser can die between two clicks.
+    @Test func startingACopySurvivesADeadSession() async throws {
+        let phone = samplePhone()
+        let harness = try await Harness(devices: [phone])
+        _ = try await harness.wait("phone listed") { $0.devices[phone.key.description] != nil }
+        let stats = Mutex(0)
+        phone.setFaultInjector { point in
+            if case .stat = point, stats.withLock({ $0 += 1; return $0 }) == 1 { return .transient }
+            return nil
+        }
+
+        let id = try await harness.copy(phone, ["/DCIM"])
+        _ = try await harness.wait("copy done") { $0.batches[id]?.phase == .completed }
+
+        try harness.expectCopied(phone, batchID: id)
+        await harness.stopEngine()
+    }
+
     @Test func unpluggingPausesAndReplugResumes() async throws {
         let phone = samplePhone(big: 24 << 20)
         let reads = Counter()

@@ -293,6 +293,9 @@ struct DoneView: View {
                         result(Gem(form: .disc, palette: .amber, symbol: "exclamationmark", size: 46),
                                "\(Format.count(batch.filesNeedingAttention, "file")) need\(batch.filesNeedingAttention == 1 ? "s" : "") attention",
                                "Pulli could not copy \(batch.filesNeedingAttention == 1 ? "it" : "them")", link: ("Review", { model.show(.attention) }))
+                        Button("Try Again") { Task { await model.control(batch.id, .retryNeedsAttention) } }
+                            .buttonStyle(PillButtonStyle(kind: .strong, small: true))
+                            .padding(.leading, 60)
                     }
                 }
                 Text(stats).font(.pulli(13)).foregroundStyle(tone.t3).monospacedDigit()

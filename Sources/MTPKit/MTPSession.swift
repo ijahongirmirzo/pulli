@@ -16,6 +16,8 @@ public final class MTPSession: DeviceSession {
 
     /// Children per listed folder, so path lookups do not re-list. Valid for this session only.
     private var folderCache: [FolderKey: [ExactName: RemoteEntry]] = [:]
+    /// Listed folders with a file the phone would not describe, so a missing name proves nothing.
+    private var incompleteFolders: Set<FolderKey> = []
     private var device: UnsafeMutablePointer<LIBMTP_mtpdevice_t>?
     private let registryID: UInt64
 
@@ -25,6 +27,7 @@ public final class MTPSession: DeviceSession {
     }
 
     static let listPageSize = 256
+    static let metadataRetries = 5
     private static var nextEpoch: UInt64 = 1
 
     init(device: UnsafeMutablePointer<LIBMTP_mtpdevice_t>, usb: USBDeviceRecord) {
@@ -96,7 +99,14 @@ public final class MTPSession: DeviceSession {
     public func stat(_ path: RemotePath, storage: StorageID) async throws(DeviceError) -> RemoteEntry? {
         guard !path.isRoot else { return nil }
         let children = try await children(of: path.parent, storage: storage)
-        return children?[ExactName(path.name)]
+        if let entry = children?[ExactName(path.name)] { return entry }
+        guard incompleteFolders.isEmpty else {
+            // Not "gone": ask again on a fresh session rather than report the file as deleted.
+            folderCache.removeAll()
+            incompleteFolders.removeAll()
+            throw .transient("the phone did not list \(path.name)")
+        }
+        return nil
     }
 
     public func read(_ ref: ObjectRef, offset: UInt64, maxLength: Int) throws(DeviceError) -> Data {
@@ -284,6 +294,9 @@ public final class MTPSession: DeviceSession {
 
         var byName: [ExactName: RemoteEntry] = [:]
         byName.reserveCapacity(Int(count))
+        var complete = true
+        // A busy phone can fail this once; a folder of unreadable objects must not hold up the listing.
+        var retriesLeft = Self.metadataRetries
         var start = 0
         while start < Int(count) {
             if Task.isCancelled { return }
@@ -291,7 +304,16 @@ public final class MTPSession: DeviceSession {
             var page: [RemoteEntry] = []
             page.reserveCapacity(end - start)
             for index in start..<end {
-                guard let file = LIBMTP_Get_Filemetadata(device, ids![index]) else { continue }
+                var metadata = LIBMTP_Get_Filemetadata(device, ids![index])
+                while metadata == nil, retriesLeft > 0 {
+                    retriesLeft -= 1
+                    usleep(100_000)
+                    metadata = LIBMTP_Get_Filemetadata(device, ids![index])
+                }
+                guard let file = metadata else {
+                    complete = false
+                    continue
+                }
                 defer { LIBMTP_destroy_file_t(file) }
                 guard let entry = entry(from: file.pointee, storage: storage) else { continue }
                 page.append(entry)
@@ -304,6 +326,7 @@ public final class MTPSession: DeviceSession {
             await Task.yield()
         }
         folderCache[key] = byName
+        if complete { incompleteFolders.remove(key) } else { incompleteFolders.insert(key) }
     }
 
     private func children(of folder: RemotePath, storage: StorageID) async throws(DeviceError) -> [ExactName: RemoteEntry]? {

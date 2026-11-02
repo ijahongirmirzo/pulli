@@ -98,26 +98,42 @@ actor TransferService {
     // MARK: Commands
 
     func create(_ request: CreateBatchRequest, key: DeviceKey) async throws -> Int64 {
-        let session = try await hub.open(key)
-        defer { Task { await session.close() } }
-        var items: [BatchItem] = []
-        for path in request.paths.map({ RemotePath($0) }) {
-            guard let entry = try await session.stat(path, storage: request.storageID) else {
-                throw PulliError(.notFound, "\(path) is not on the phone")
-            }
-            items.append(BatchItem(entry, at: path))
-        }
+        let (items, deviceName) = try await lookUp(request, key: key)
         let destination = URL(fileURLWithPath: (request.destinationPath as NSString).expandingTildeInPath).standardizedFileURL
         let policy = DuplicatePolicy(rawValue: request.duplicatePolicy ?? settings.duplicatePolicy) ?? .auto
         let caseSensitive = (try? Self.existingAncestor(of: destination).resourceValues(forKeys: [.volumeSupportsCaseSensitiveNamesKey]).volumeSupportsCaseSensitiveNames) ?? false
         let record = try journal.createBatch(deviceKey: key, storageID: request.storageID, destinationRoot: destination,
                                              items: items, duplicatePolicy: policy, caseSensitive: caseSensitive,
                                              organize: request.organize ?? settings.organize)
-        runtimes[record.id!] = Runtime(record: record, deviceName: session.info.displayName, totals: try journal.totals(batchID: record.id!),
+        runtimes[record.id!] = Runtime(record: record, deviceName: deviceName, totals: try journal.totals(batchID: record.id!),
                                        phase: .paused(.queued), recent: [], bytesDone: 0)
         enqueue(record)
         publishNow(record.id!)
         return record.id!
+    }
+
+    /// Finds the picked paths on the phone. The shared session may have just died (a stalled or
+    /// crashed worker): one failure gets a fresh session before the user hears about it.
+    private func lookUp(_ request: CreateBatchRequest, key: DeviceKey) async throws -> ([BatchItem], String) {
+        var retried = false
+        while true {
+            let session = try await hub.open(key)
+            do {
+                var items: [BatchItem] = []
+                for path in request.paths.map({ RemotePath($0) }) {
+                    guard let entry = try await session.stat(path, storage: request.storageID) else {
+                        throw PulliError(.notFound, "\(path) is not on the phone")
+                    }
+                    items.append(BatchItem(entry, at: path))
+                }
+                await session.close()
+                return (items, session.info.displayName)
+            } catch {
+                await session.close()
+                guard !retried, case .transient? = error as? DeviceError else { throw error }
+                retried = true
+            }
+        }
     }
 
     func control(_ id: Int64, _ command: BatchCommand) async throws {
